@@ -1,23 +1,23 @@
 # DBMS Mini-Project
 
-**Livestock Health & Breeding Record Management for Dairy Farms**
+**HerdSense: Livestock Health & Breeding Record Management for Dairy Farms**
 
-DBMS Experiential Learning – Level 3 Project
+DBMS Experiential Learning – Level 3 Project (PES University, Aug–Dec 2026)
 
 ## About
 
 HerdSense helps dairy farms manage cattle health, vaccination, breeding, and milk-yield records. Beyond basic record keeping, it:
 
-- traces cattle pedigrees (and flags inbreeding) with recursive SQL queries,
-- automates vaccination schedules and breeding rules with triggers and stored procedures,
-- uses **semantic (vector) search** over vet notes to find similar past cases and suggested conditions.
+- traces cattle pedigrees with recursive SQL queries,
+- tracks vaccination due dates with triggers and flags unusual milk yield with a stored procedure,
+- uses **semantic (vector) search** over vet notes to find similar past cases and likely conditions.
 
 ## Team
 
 | Member | SRN | Responsibilities |
 |--------|-----|------------------|
-| _Vaibhav Raj Warrier_ | _PES1UG24CS640_ | _Cattle core, breeding & pedigree_ |
-| _Varun Rao_ | _PES1UG24CS520_ | _Health, vaccination, vector search & auth_ |
+| Vaibhav Raj Warrier | PES1UG24CS640 | Cattle core, breeding & pedigree |
+| Varun Rao | PES1UG24CS520 | Health, vaccination, vector search & auth |
 
 ## Tech Stack
 
@@ -36,7 +36,7 @@ HerdSense helps dairy farms manage cattle health, vaccination, breeding, and mil
 - **SQL (PostgreSQL):** structured, relational data such as cattle, pedigree, health records, vaccinations, breeding, and milk yield, where integrity constraints and transactions matter.
 - **Vector (pgvector):** embeddings of free-text vet notes for similarity search, since keyword matching can't capture meaning.
 
-**Advanced features:** transactions, triggers, stored procedures/functions, views, indexes, recursive CTEs, vector similarity search (with read/update/delete).
+**Advanced features:** transactions, triggers, stored procedures/functions, views, indexes, recursive CTEs, full-text search, vector similarity search (with read/update/delete).
 
 ## Prerequisites
 
@@ -46,10 +46,12 @@ HerdSense helps dairy farms manage cattle health, vaccination, breeding, and mil
 
 ## Setup & Run
 
+> The SQL scripts and the app are added phase by phase. Steps 4 onward work once those phases are merged.
+
 ```bash
 # 1. Clone
-git clone https://github.com/<your-username>/herdsense.git
-cd herdsense
+git clone https://github.com/vaibh1409/DBMS-Mini-Project.git
+cd DBMS-Mini-Project
 
 # 2. Install dependencies
 npm install
@@ -64,8 +66,8 @@ psql -U <admin_user> -d herdsense -f db/vector/setup_pgvector.sql
 
 # 5. Run SQL scripts in order
 psql -U <admin_user> -d herdsense -f db/schema/01_create_tables.sql
-psql -U <admin_user> -d herdsense -f db/schema/03_indexes.sql
-psql -U <admin_user> -d herdsense -f db/schema/04_views.sql
+psql -U <admin_user> -d herdsense -f db/schema/02_indexes.sql
+psql -U <admin_user> -d herdsense -f db/schema/03_views.sql
 psql -U <admin_user> -d herdsense -f db/logic/procedures.sql
 psql -U <admin_user> -d herdsense -f db/logic/triggers.sql
 psql -U <admin_user> -d herdsense -f db/logic/roles_grants.sql
@@ -85,28 +87,42 @@ npm run dev
 
 | Role | Username | Password |
 |------|----------|----------|
-| Owner/Admin | _owner_demo_ | _set in seed data_ |
-| Vet | _vet_demo_ | _set in seed data_ |
-| Farmhand | _farmhand_demo_ | _set in seed data_ |
+| Owner | owner_demo | set in seed data |
+| Vet | vet_demo | set in seed data |
+| Farmhand | farmhand_demo | set in seed data |
 
 ## Project Structure
 
 ```
-db/        SQL scripts (schema, logic, seed, queries, vector)
-scripts/   Embedding generation scripts
-src/       Next.js app (pages, API route handlers, components, lib)
-docs/      ER diagram, schema, data dictionary, screenshots, test cases, report
+db/
+  schema/     DDL: tables, indexes, views
+  logic/      Procedures, triggers, roles and grants
+  seed/       Sample data
+  queries/    Important queries
+  vector/     pgvector setup
+scripts/      Embedding generation script
+src/          Next.js app (pages, API route handlers, components, lib)
+docs/
+  design/     ER diagram, relational schema, data dictionary, vector design, database choice
+  screenshots/
+  tests/      Test cases and results
 ```
 
 ## Documentation
 
-See the `docs/` folder for the ER diagram, relational schema, data dictionary, architecture diagram, important queries, screenshots, and test results.
+- [ER diagram](docs/design/er_diagram.png)
+- [Relational schema](docs/design/relational_schema.md)
+- [Data dictionary](docs/design/data_dictionary.md)
+- [Vector database design](docs/design/vector_design.md)
+- [Database choice and justification](docs/design/database_choice.md)
+
+Screenshots, test results and the final report are added to `docs/` as the project progresses.
 
 ## Role-Based Access
 
 | Role | Access |
 |------|--------|
-| Owner/Admin | Full access |
+| Owner | Full access |
 | Vet | Health records, treatments, vaccinations |
 | Farmhand | Milk yield entry, read-only cattle view |
 
@@ -117,7 +133,3 @@ Enforced both in the backend and at the database level via PostgreSQL roles and 
 - No credentials are hard-coded; all configuration comes from environment variables.
 - Passwords are hashed with bcrypt.
 - `.env` is git-ignored; use `.env.example` as the template.
-
-## Future Enhancements
-
-_To be filled in._

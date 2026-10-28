@@ -1,5 +1,5 @@
 HerdSense DDL constraint test results: staff_health_vaccinations
-PostgreSQL 16, run on 2026-10-28
+PostgreSQL 16, run on 2026-10-28 against the seeded database
 Command: psql -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinations.sql
 
  #  |                                    test                                    |     expected     |      actual      | result 

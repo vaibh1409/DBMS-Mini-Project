@@ -100,7 +100,8 @@ BEGIN
 
     PERFORM pg_temp.expect_true('H6 full-text search finds notes mentioning "swollen"',
         $q$SELECT count(*) = 1 FROM Health_Records
-            WHERE to_tsvector('english', vet_notes) @@ to_tsquery('english', 'swollen')$q$);
+            WHERE cattle_id IN (9101, 9102)
+              AND to_tsvector('english', vet_notes) @@ to_tsquery('english', 'swollen')$q$);
     PERFORM pg_temp.expect_true('H7 v_cattle_health_summary shows count and latest condition',
         $q$SELECT health_record_count = 2 AND last_suspected_condition = 'Lameness'
              FROM v_cattle_health_summary WHERE cattle_id = 9101$q$);

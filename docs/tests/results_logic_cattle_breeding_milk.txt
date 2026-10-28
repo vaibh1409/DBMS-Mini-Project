@@ -1,0 +1,35 @@
+HerdSense trigger, function and procedure test results: cattle_breeding_milk
+PostgreSQL 16 with the sample data, run on 2026-10-28
+Command: psql -d herdsense -f docs/tests/logic_tests_cattle_breeding_milk.sql
+
+CREATE TABLE
+CREATE FUNCTION
+CREATE FUNCTION
+psql:docs/tests/logic_tests_cattle_breeding_milk.sql:103: NOTICE:  Calf 36 (Ganga II) recorded for breeding record 16.
+ #  |                                test                                 |     expected     |      actual      | result 
+----+---------------------------------------------------------------------+------------------+------------------+--------
+  1 | T1 trigger: a bull cannot be recorded as the dam                    | rejected (23514) | rejected (23514) | PASS
+  2 | T2 trigger: a cow cannot be recorded as the sire                    | rejected (23514) | rejected (23514) | PASS
+  3 | T3 trigger: calf cannot be born before the breeding date            | rejected (23514) | rejected (23514) | PASS
+  4 | T4 trigger: a valid breeding record is accepted                     | true             | true             | PASS
+  5 | T5 trigger: milk cannot be recorded for a bull                      | rejected (23514) | rejected (23514) | PASS
+  6 | T6 trigger: milk cannot be recorded for a sold cow                  | rejected (23514) | rejected (23514) | PASS
+  7 | T7 fn_pedigree: Tulsi has 7 rows over 3 generations                 | true             | true             | PASS
+  8 | T8 fn_pedigree: great-grandparents are Ganga and Bhima              | true             | true             | PASS
+  9 | T9 fn_pedigree: generation limit stops at parents                   | true             | true             | PASS
+ 10 | T10 fn_pedigree: a founder has no ancestors                         | true             | true             | PASS
+ 11 | T11 fn_yield_anomalies: only Lakshmi is flagged                     | true             | true             | PASS
+ 12 | T12 fn_yield_anomalies: shows her latest condition (Mastitis)       | true             | true             | PASS
+ 13 | T13 fn_yield_anomalies: a 50% threshold flags nobody                | true             | true             | PASS
+ 14 | T14 sp_record_calving: adds the calf and closes the breeding record | true             | true             | PASS
+ 15 | T15 sp_record_calving: a breeding already calved is rejected        | rejected (23514) | rejected (23514) | PASS
+ 16 | T16 sp_record_calving: a calf dated before the breeding is rejected | rejected (23514) | rejected (23514) | PASS
+ 17 | T17 sp_record_calving: failed calls left no half-saved calf         | true             | true             | PASS
+ 18 | T18 sp_record_calving: breeding 17 is still Pending                 | true             | true             | PASS
+(18 rows)
+
+ passed | total 
+--------+-------
+     18 |    18
+(1 row)
+

@@ -41,12 +41,31 @@ HerdSense helps dairy farms manage cattle health, vaccination, breeding, and mil
 ## Prerequisites
 
 - Node.js 18+ and npm
-- PostgreSQL 15+ with the `pgvector` extension available
+- PostgreSQL 15+ with the `pgvector` extension installed (see below)
 - Git
+- Internet access the first time embeddings are generated (the model, about 90 MB, is downloaded once and cached)
+
+### Installing pgvector on Windows
+
+Either option works:
+
+- **Build it for your installed PostgreSQL.** Install Visual Studio Build Tools with "Desktop development with C++", open "x64 Native Tools Command Prompt for VS" as administrator, and run (change `16` to your PostgreSQL version):
+  ```
+  set "PGROOT=C:\Program Files\PostgreSQL\16"
+  cd %TEMP%
+  git clone --branch v0.8.5 https://github.com/pgvector/pgvector.git
+  cd pgvector
+  nmake /F Makefile.win
+  nmake /F Makefile.win install
+  ```
+- **Run PostgreSQL with pgvector in Docker:**
+  ```
+  docker run --name herdsense-db -e POSTGRES_PASSWORD=<password> -p 5432:5432 -d pgvector/pgvector:pg16-trixie
+  ```
 
 ## Setup & Run
 
-> The SQL scripts and the app are added phase by phase. Steps 4 onward work once those phases are merged.
+> The SQL scripts and the app are added phase by phase. Steps marked *(later phase)* work once those phases are merged.
 
 ```bash
 # 1. Clone
@@ -64,45 +83,54 @@ cp .env.example .env
 psql -U <admin_user> -c "CREATE DATABASE herdsense;"
 psql -U <admin_user> -d herdsense -f db/vector/setup_pgvector.sql
 
-# 5. Run SQL scripts in order
+# 5. Create the tables, indexes, views and the vector table
 psql -U <admin_user> -d herdsense -f db/schema/01_staff.sql
 psql -U <admin_user> -d herdsense -f db/schema/02_cattle_breeding_milk.sql
 psql -U <admin_user> -d herdsense -f db/schema/03_health_vaccinations.sql
 psql -U <admin_user> -d herdsense -f db/schema/04_indexes.sql
 psql -U <admin_user> -d herdsense -f db/schema/05_views.sql
+psql -U <admin_user> -d herdsense -f db/vector/note_embeddings.sql
+
+# 6. Procedures, triggers, roles and grants  (later phase)
 psql -U <admin_user> -d herdsense -f db/logic/procedures.sql
 psql -U <admin_user> -d herdsense -f db/logic/triggers.sql
 psql -U <admin_user> -d herdsense -f db/logic/roles_grants.sql
-psql -U <admin_user> -d herdsense -f db/seed/seed_data.sql
 
-# 6. Generate embeddings for seeded vet notes
-node scripts/embed_notes.js
+# 7. Load the sample data (in this order; 01 clears all tables first)
+psql -U <admin_user> -d herdsense -f db/seed/01_seed_staff.sql
+psql -U <admin_user> -d herdsense -f db/seed/02_seed_cattle_breeding_milk.sql
+psql -U <admin_user> -d herdsense -f db/seed/03_seed_health_vaccinations.sql
 
-# 7. Start the app
+# 8. Generate embeddings for the vet notes
+npm run embed
+
+# 9. Start the app  (later phase)
 npm run dev
 # open http://localhost:3000
 ```
 
 ## Demo Accounts
 
-> For demonstration only. Passwords are stored hashed in the database.
+> For demonstration only. Passwords are stored as bcrypt hashes in the database.
 
 | Role | Username | Password |
 |------|----------|----------|
-| Owner | owner_demo | set in seed data |
-| Vet | vet_demo | set in seed data |
-| Farmhand | farmhand_demo | set in seed data |
+| Owner | owner_demo | Owner@123 |
+| Vet | vet_demo | Vet@123 |
+| Vet | vet_arjun | Vet@123 |
+| Farmhand | farmhand_demo | Farm@123 |
+| Farmhand | farmhand_manju | Farm@123 |
 
 ## Project Structure
 
 ```
 db/
-  schema/     DDL: tables, indexes, views
+  schema/     DDL: tables, indexes, views, ALTER/DROP demo
   logic/      Procedures, triggers, roles and grants
   seed/       Sample data
   queries/    Important queries
-  vector/     pgvector setup
-scripts/      Embedding generation script
+  vector/     pgvector setup, vector table, vector queries
+scripts/      Embedding generation and vector demo scripts
 src/          Next.js app (pages, API route handlers, components, lib)
 docs/
   design/     ER diagram, relational schema, data dictionary, vector design, database choice
@@ -129,6 +157,19 @@ psql -U <admin_user> -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinati
 
 # ALTER and DROP demonstration (leaves the schema unchanged)
 psql -U <admin_user> -d herdsense -f db/schema/alter_drop_demo.sql
+
+# Vector database tests (after `npm run embed`)
+node docs/tests/vector_tests.js
+
+# Vector read / update / delete in plain SQL (changes are rolled back)
+psql -U <admin_user> -d herdsense -f db/vector/vector_queries.sql
+
+# Vector demo from the command line
+node scripts/vector_demo.js search  "swollen udder and clots in milk"
+node scripts/vector_demo.js compare "inflamed udder and lumpy discoloured milk"
+node scripts/vector_demo.js read    1
+node scripts/vector_demo.js update  24 "Mild fever and reduced appetite" "Fever"
+node scripts/vector_demo.js delete  24
 ```
 
 Saved results are in `docs/tests/results_*.txt`.

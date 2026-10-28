@@ -1,0 +1,34 @@
+HerdSense trigger, function and procedure test results: health_vaccinations
+PostgreSQL 16 with the sample data, run on 2026-10-28
+Command: psql -d herdsense -f docs/tests/logic_tests_health_vaccinations.sql
+
+CREATE TABLE
+CREATE FUNCTION
+CREATE FUNCTION
+psql:/root/DBMS-Mini-Project/docs/tests/logic_tests_health_vaccinations.sql:109: NOTICE:  3 dose(s) of LSD recorded.
+ #  |                               test                                |     expected     |      actual      | result 
+----+-------------------------------------------------------------------+------------------+------------------+--------
+  1 | T1 trigger: every seeded dose has a due date                      | true             | true             | PASS
+  2 | T2 trigger: due date = administered date + interval               | true             | true             | PASS
+  3 | T3 trigger: changing the interval recomputes the due date         | true             | true             | PASS
+  4 | T4 trigger: a hand-typed due date is overwritten                  | true             | true             | PASS
+  5 | T5 trigger: a farmhand cannot be recorded as the examining vet    | rejected (23514) | rejected (23514) | PASS
+  6 | T6 trigger: the owner cannot be recorded as giving a vaccine      | rejected (23514) | rejected (23514) | PASS
+  7 | T7 trigger: changing a record to a farmhand vet is rejected       | rejected (23514) | rejected (23514) | PASS
+  8 | T8 trigger: a new condition is copied to the embedding metadata   | true             | true             | PASS
+  9 | T9 trigger: changing the note text removes the stale embedding    | true             | true             | PASS
+ 10 | T10 fn_vaccinations_due(0) matches the v_vaccinations_due view    | true             | true             | PASS
+ 11 | T11 fn_vaccinations_due(0): Meena's HS dose is due today          | true             | true             | PASS
+ 12 | T12 fn_vaccinations_due(30) adds doses due in the next 30 days    | true             | true             | PASS
+ 13 | T13 sp_vaccinate_herd: records one dose per animal with due dates | true             | true             | PASS
+ 14 | T14 sp_vaccinate_herd: a sold animal in the list rejects the call | rejected (23514) | rejected (23514) | PASS
+ 15 | T15 sp_vaccinate_herd: an unknown animal rejects the call         | rejected (23503) | rejected (23503) | PASS
+ 16 | T16 sp_vaccinate_herd: a farmhand cannot vaccinate                | rejected (23514) | rejected (23514) | PASS
+ 17 | T17 sp_vaccinate_herd: failed calls saved no doses at all         | true             | true             | PASS
+(17 rows)
+
+ passed | total 
+--------+-------
+     17 |    17
+(1 row)
+

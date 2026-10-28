@@ -32,14 +32,29 @@ Vectors live in the `Note_Embeddings` table of the same PostgreSQL database, in 
 
 Each note has exactly one embedding, enforced by the UNIQUE foreign key.
 
-## Index
+## Indexes
 
-An HNSW index using the cosine operator class:
+An HNSW index using the cosine operator class, for nearest-neighbour search:
 
 ```sql
 CREATE INDEX idx_note_embeddings_hnsw
     ON Note_Embeddings USING hnsw (embedding vector_cosine_ops);
 ```
+
+B-tree indexes on the metadata used as filters: `idx_note_embeddings_condition (suspected_condition)` and `idx_note_embeddings_cattle (cattle_id)`.
+
+## Implementation files
+
+| File | Purpose |
+|---|---|
+| `db/vector/setup_pgvector.sql` | Enables the pgvector extension |
+| `db/vector/note_embeddings.sql` | Creates `Note_Embeddings` and its indexes |
+| `db/vector/vector_queries.sql` | Read, similarity search, update and delete in plain SQL |
+| `src/lib/embeddings.js` | Loads all-MiniLM-L6-v2 and turns text into a vector |
+| `src/lib/noteVectors.js` | Create/update (upsert), read, search, delete and full-text fallback |
+| `scripts/embed_notes.js` | Embeds every note that does not have an embedding yet (`--all` re-embeds) |
+| `scripts/vector_demo.js` | Command-line demo of search, compare, read, update and delete |
+| `docs/tests/vector_tests.js` | Automated tests for the vector operations |
 
 ## Similarity metric
 

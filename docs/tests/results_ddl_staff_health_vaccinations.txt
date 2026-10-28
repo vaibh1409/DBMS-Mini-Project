@@ -1,0 +1,32 @@
+HerdSense DDL constraint test results: staff_health_vaccinations
+PostgreSQL 16, run on 2026-10-28
+Command: psql -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinations.sql
+
+ #  |                                    test                                    |     expected     |      actual      | result 
+----+----------------------------------------------------------------------------+------------------+------------------+--------
+  1 | S1 duplicate username                                                      | rejected (23505) | rejected (23505) | PASS
+  2 | S2 invalid role                                                            | rejected (23514) | rejected (23514) | PASS
+  3 | S3 missing password_hash (NOT NULL)                                        | rejected (23502) | rejected (23502) | PASS
+  4 | S4 created_at is filled by default                                         | true             | true             | PASS
+  5 | H1 blank vet notes                                                         | rejected (23514) | rejected (23514) | PASS
+  6 | H2 invalid severity                                                        | rejected (23514) | rejected (23514) | PASS
+  7 | H3 record_date in the future                                               | rejected (23514) | rejected (23514) | PASS
+  8 | H4 animal does not exist (foreign key)                                     | rejected (23503) | rejected (23503) | PASS
+  9 | H5 vet does not exist (foreign key)                                        | rejected (23503) | rejected (23503) | PASS
+ 10 | H6 full-text search finds notes mentioning "swollen"                       | true             | true             | PASS
+ 11 | H7 v_cattle_health_summary shows count and latest condition                | true             | true             | PASS
+ 12 | H8 deleting a vet who has records (RESTRICT)                               | rejected (23503) | rejected (23503) | PASS
+ 13 | V1 interval_days must be positive                                          | rejected (23514) | rejected (23514) | PASS
+ 14 | V2 administered_date in the future                                         | rejected (23514) | rejected (23514) | PASS
+ 15 | V3 animal does not exist (foreign key)                                     | rejected (23503) | rejected (23503) | PASS
+ 16 | V4 v_vaccinations_due lists the overdue animal                             | true             | true             | PASS
+ 17 | V5 v_vaccinations_due ignores doses replaced by a newer one                | true             | true             | PASS
+ 18 | V6 deleting an animal removes its health and vaccination records (CASCADE) | true             | true             | PASS
+ 19 | V7 no health or vaccination records left for the deleted animal            | true             | true             | PASS
+(19 rows)
+
+ passed | total 
+--------+-------
+     19 |    19
+(1 row)
+

@@ -91,9 +91,12 @@ psql -U <admin_user> -d herdsense -f db/schema/04_indexes.sql
 psql -U <admin_user> -d herdsense -f db/schema/05_views.sql
 psql -U <admin_user> -d herdsense -f db/vector/note_embeddings.sql
 
-# 6. Procedures, triggers, roles and grants  (later phase)
-psql -U <admin_user> -d herdsense -f db/logic/procedures.sql
-psql -U <admin_user> -d herdsense -f db/logic/triggers.sql
+# 6. Triggers, functions and procedures (before the seed data, so the triggers check it)
+psql -U <admin_user> -d herdsense -f db/logic/triggers_health_vaccinations.sql
+psql -U <admin_user> -d herdsense -f db/logic/triggers_cattle_breeding_milk.sql
+psql -U <admin_user> -d herdsense -f db/logic/procedures_health_vaccinations.sql
+psql -U <admin_user> -d herdsense -f db/logic/procedures_cattle_breeding_milk.sql
+#    Roles and grants  (later phase)
 psql -U <admin_user> -d herdsense -f db/logic/roles_grants.sql
 
 # 7. Load the sample data (in this order; 01 clears all tables first)
@@ -165,6 +168,15 @@ psql -U <admin_user> -d herdsense -f db/queries/dml_health_vaccinations.sql
 # Important queries: joins, GROUP BY/HAVING, nested and correlated subqueries, recursive CTEs
 psql -U <admin_user> -d herdsense -f db/queries/queries_cattle_breeding_milk.sql
 psql -U <admin_user> -d herdsense -f db/queries/queries_health_vaccinations.sql
+
+# Trigger, function and procedure tests (on the seeded database; rolled back)
+psql -U <admin_user> -d herdsense -f docs/tests/logic_tests_cattle_breeding_milk.sql
+psql -U <admin_user> -d herdsense -f docs/tests/logic_tests_health_vaccinations.sql
+
+# Using the functions and procedures
+psql -U <admin_user> -d herdsense -c "SELECT * FROM fn_pedigree(17);"
+psql -U <admin_user> -d herdsense -c "SELECT * FROM fn_yield_anomalies();"
+psql -U <admin_user> -d herdsense -c "SELECT * FROM fn_vaccinations_due(30);"
 
 # Vector database tests (after `npm run embed`)
 node docs/tests/vector_tests.js

@@ -1,0 +1,319 @@
+HerdSense query results: health_vaccinations
+PostgreSQL 16 with the sample data, run on 2026-10-28. Dates in the sample data are relative to the run date.
+Commands: psql -d herdsense -f db/queries/dml_health_vaccinations.sql   and   psql -d herdsense -f db/queries/queries_health_vaccinations.sql
+
+########## DML (rolled back) ##########
+BEGIN;
+BEGIN
+INSERT INTO Health_Records (cattle_id, vet_id, record_date, vet_notes, suspected_condition, treatment, severity)
+VALUES (14, 2, CURRENT_DATE,
+        'Slight swelling of the right hock, walking carefully but eating well.',
+        'Lameness', 'Rest on soft bedding, recheck in a week', 'Mild')
+RETURNING health_id, cattle_id, record_date, suspected_condition;
+ health_id | cattle_id | record_date | suspected_condition 
+-----------+-----------+-------------+---------------------
+        36 |        14 | 2026-10-28  | Lameness
+(1 row)
+
+INSERT 0 1
+INSERT INTO Vaccinations (cattle_id, vaccine_name, administered_date, interval_days, administered_by)
+SELECT v.cattle_id, 'FMD', CURRENT_DATE, 180, 2
+FROM Vaccinations v
+WHERE v.vaccine_name = 'FMD'
+  AND v.administered_date = CURRENT_DATE - 200;
+INSERT 0 5
+SELECT cattle_id, vaccine_name, administered_date
+FROM Vaccinations
+WHERE administered_date = CURRENT_DATE
+ORDER BY cattle_id;
+ cattle_id | vaccine_name | administered_date 
+-----------+--------------+-------------------
+         4 | FMD          | 2026-10-28
+         5 | FMD          | 2026-10-28
+         8 | FMD          | 2026-10-28
+        11 | FMD          | 2026-10-28
+        12 | FMD          | 2026-10-28
+(5 rows)
+
+UPDATE Health_Records
+   SET treatment = treatment || '. Follow-up: quarter softer, milk clearing.',
+       severity  = 'Mild'
+ WHERE health_id = 1;
+UPDATE 1
+SELECT health_id, severity, treatment FROM Health_Records WHERE health_id = 1;
+ health_id | severity |                                                                 treatment                                                                  
+-----------+----------+--------------------------------------------------------------------------------------------------------------------------------------------
+         1 | Mild     | Intramammary antibiotic after each milking for 3 days, strip the affected quarter, discard milk. Follow-up: quarter softer, milk clearing.
+(1 row)
+
+UPDATE Vaccinations v
+   SET administered_by = latest.vet_id
+  FROM (SELECT DISTINCT ON (cattle_id) cattle_id, vet_id
+          FROM Health_Records
+         ORDER BY cattle_id, record_date DESC) AS latest
+ WHERE latest.cattle_id = v.cattle_id
+   AND v.administered_date = CURRENT_DATE;
+UPDATE 5
+SELECT v.cattle_id, s.full_name AS given_by
+FROM Vaccinations v JOIN Farm_Staff s ON s.staff_id = v.administered_by
+WHERE v.administered_date = CURRENT_DATE
+ORDER BY v.cattle_id;
+ cattle_id |     given_by     
+-----------+------------------
+         4 | Dr. Arjun Shetty
+         5 | Dr. Arjun Shetty
+         8 | Dr. Arjun Shetty
+        11 | Dr. Kavya Menon
+        12 | Dr. Kavya Menon
+(5 rows)
+
+DELETE FROM Vaccinations
+ WHERE cattle_id = 5 AND administered_date = CURRENT_DATE
+RETURNING vaccination_id, cattle_id, vaccine_name;
+ vaccination_id | cattle_id | vaccine_name 
+----------------+-----------+--------------
+             44 |         5 | FMD
+(1 row)
+
+DELETE 1
+DELETE FROM Health_Records
+ WHERE health_id = (SELECT max(health_id) FROM Health_Records WHERE cattle_id = 14);
+DELETE 1
+SELECT (SELECT count(*) FROM Health_Records) AS health_records,
+       (SELECT count(*) FROM Vaccinations)   AS vaccinations;
+ health_records | vaccinations 
+----------------+--------------
+             24 |           30
+(1 row)
+
+ROLLBACK;
+ROLLBACK
+SELECT (SELECT count(*) FROM Health_Records) AS health_records,
+       (SELECT count(*) FROM Vaccinations)   AS vaccinations,
+       (SELECT severity FROM Health_Records WHERE health_id = 1) AS record_1_severity;
+ health_records | vaccinations | record_1_severity 
+----------------+--------------+-------------------
+             24 |           26 | Moderate
+(1 row)
+
+
+########## QUERIES ##########
+SELECT h.record_date,
+       c.tag_number,
+       c.name                AS animal,
+       s.full_name           AS vet,
+       h.suspected_condition,
+       h.severity
+FROM Health_Records h
+JOIN Cattle c     ON c.cattle_id = h.cattle_id
+JOIN Farm_Staff s ON s.staff_id  = h.vet_id
+WHERE h.record_date >= CURRENT_DATE - 90
+ORDER BY h.record_date DESC;
+ record_date | tag_number | animal  |       vet        |  suspected_condition  | severity 
+-------------+------------+---------+------------------+-----------------------+----------
+ 2026-10-25  | KA-2003    | Lakshmi | Dr. Kavya Menon  | Mastitis              | Moderate
+ 2026-10-23  | KA-2001    | Gauri   | Dr. Arjun Shetty | Foot Rot              | Mild
+ 2026-10-18  | KA-2004    | Sundari | Dr. Kavya Menon  |                       | Mild
+ 2026-09-28  | KA-1004    | Arjuna  | Dr. Arjun Shetty |                       | Mild
+ 2026-09-18  | KA-4001    | Tulsi   | Dr. Arjun Shetty | Respiratory Infection | Moderate
+ 2026-09-03  | KA-2001    | Gauri   | Dr. Kavya Menon  | Foot Rot              | Moderate
+(6 rows)
+
+SELECT h.suspected_condition       AS condition,
+       count(*)                    AS cases,
+       count(DISTINCT h.cattle_id) AS animals,
+       min(h.record_date)          AS first_seen,
+       max(h.record_date)          AS last_seen
+FROM Health_Records h
+WHERE h.suspected_condition IS NOT NULL
+GROUP BY h.suspected_condition
+HAVING count(*) >= 2
+ORDER BY cases DESC, condition;
+  condition  | cases | animals | first_seen | last_seen  
+-------------+-------+---------+------------+------------
+ Mastitis    |     4 |       4 | 2025-02-15 | 2026-10-25
+ Bloat       |     2 |       2 | 2025-07-05 | 2026-07-25
+ Calf Scours |     2 |       2 | 2024-11-27 | 2026-01-01
+ Foot Rot    |     2 |       1 | 2026-09-03 | 2026-10-23
+ Ketosis     |     2 |       2 | 2025-04-16 | 2025-10-13
+ Lameness    |     2 |       2 | 2024-11-27 | 2026-03-12
+ Milk Fever  |     2 |       2 | 2024-05-11 | 2025-12-12
+ Tick Fever  |     2 |       2 | 2025-10-28 | 2026-05-31
+(8 rows)
+
+SELECT s.full_name                                       AS vet,
+       count(h.health_id)                                AS examinations,
+       count(*) FILTER (WHERE h.severity = 'Severe')     AS severe,
+       count(*) FILTER (WHERE h.severity = 'Moderate')   AS moderate,
+       count(*) FILTER (WHERE h.severity = 'Mild')       AS mild
+FROM Farm_Staff s
+LEFT JOIN Health_Records h ON h.vet_id = s.staff_id
+WHERE s.role = 'Vet'
+GROUP BY s.staff_id, s.full_name
+ORDER BY examinations DESC;
+       vet        | examinations | severe | moderate | mild 
+------------------+--------------+--------+----------+------
+ Dr. Kavya Menon  |           12 |      5 |        4 |    3
+ Dr. Arjun Shetty |           12 |      2 |        3 |    7
+(2 rows)
+
+SELECT c.tag_number, c.name, c.date_of_birth
+FROM Cattle c
+WHERE c.status = 'Active'
+  AND c.cattle_id NOT IN (SELECT v.cattle_id FROM Vaccinations v WHERE v.vaccine_name = 'LSD')
+ORDER BY c.cattle_id;
+ tag_number |   name    | date_of_birth 
+------------+-----------+---------------
+ KA-1005    | Tunga     | 2014-01-10
+ KA-1006    | Shiva     | 2013-09-17
+ KA-2001    | Gauri     | 2016-03-02
+ KA-2004    | Sundari   | 2017-08-08
+ KA-2005    | Kamadhenu | 2018-02-19
+ KA-3002    | Meena     | 2020-09-03
+ KA-4001    | Tulsi     | 2023-02-20
+ KA-4002    | Kalyani   | 2023-10-05
+ KA-4003    | Pooja     | 2024-04-14
+ KA-4004    | Ganesha   | 2025-01-09
+ KA-5001    | Shanti    | 2026-01-20
+ KA-5002    | Nandini   | 2025-12-05
+ KA-5003    | Hanuma    | 2025-12-11
+ KA-5004    | Kirti     | 2025-09-13
+ KA-5005    | Gowri     | 2026-09-10
+ KA-5006    | Varsha    | 2025-09-22
+ KA-5007    | Tara      | 2024-05-10
+(17 rows)
+
+SELECT c.name,
+       h.record_date,
+       h.suspected_condition,
+       h.severity
+FROM Health_Records h
+JOIN Cattle c ON c.cattle_id = h.cattle_id
+WHERE h.record_date = (SELECT max(h2.record_date)
+                         FROM Health_Records h2
+                        WHERE h2.cattle_id = h.cattle_id)
+ORDER BY h.record_date DESC;
+   name    | record_date |  suspected_condition   | severity 
+-----------+-------------+------------------------+----------
+ Lakshmi   | 2026-10-25  | Mastitis               | Moderate
+ Gauri     | 2026-10-23  | Foot Rot               | Mild
+ Sundari   | 2026-10-18  |                        | Mild
+ Arjuna    | 2026-09-28  |                        | Mild
+ Tulsi     | 2026-09-18  | Respiratory Infection  | Moderate
+ Kamadhenu | 2026-07-25  | Bloat                  | Severe
+ Meena     | 2026-05-31  | Tick Fever             | Severe
+ Pooja     | 2026-05-01  | Pneumonia              | Severe
+ Radha     | 2026-03-12  | Lameness               | Mild
+ Veera     | 2026-02-10  | Foot and Mouth Disease | Severe
+ Ganesha   | 2026-01-01  | Calf Scours            | Moderate
+ Chandra   | 2025-10-13  | Ketosis                | Moderate
+ Kalyani   | 2025-07-05  | Bloat                  | Mild
+ Tunga     | 2024-05-11  | Milk Fever             | Severe
+(14 rows)
+
+SELECT c.name,
+       v.vaccine_name,
+       v.administered_date                                     AS last_dose,
+       v.administered_date + v.interval_days                   AS due_date,
+       CURRENT_DATE - (v.administered_date + v.interval_days)  AS days_overdue
+FROM Vaccinations v
+JOIN Cattle c ON c.cattle_id = v.cattle_id
+WHERE c.status = 'Active'
+  AND v.administered_date + v.interval_days <= CURRENT_DATE
+  AND NOT EXISTS (SELECT 1
+                    FROM Vaccinations later
+                   WHERE later.cattle_id    = v.cattle_id
+                     AND later.vaccine_name = v.vaccine_name
+                     AND later.administered_date > v.administered_date)
+ORDER BY days_overdue DESC, c.name;
+   name    | vaccine_name | last_dose  |  due_date  | days_overdue 
+-----------+--------------+------------+------------+--------------
+ Kalyani   | BQ           | 2025-09-23 | 2026-09-23 |           35
+ Tulsi     | BQ           | 2025-09-23 | 2026-09-23 |           35
+ Arjuna    | FMD          | 2026-04-11 | 2026-10-08 |           20
+ Gauri     | FMD          | 2026-04-11 | 2026-10-08 |           20
+ Kamadhenu | FMD          | 2026-04-11 | 2026-10-08 |           20
+ Sundari   | FMD          | 2026-04-11 | 2026-10-08 |           20
+ Tunga     | FMD          | 2026-04-11 | 2026-10-08 |           20
+ Meena     | HS           | 2025-10-28 | 2026-10-28 |            0
+ Radha     | HS           | 2025-10-28 | 2026-10-28 |            0
+(9 rows)
+
+SELECT c.name,
+       h.suspected_condition       AS condition,
+       count(*)                    AS times_recorded,
+       string_agg(h.record_date::text, ', ' ORDER BY h.record_date) AS dates
+FROM Health_Records h
+JOIN Cattle c ON c.cattle_id = h.cattle_id
+WHERE h.suspected_condition IS NOT NULL
+GROUP BY c.cattle_id, c.name, h.suspected_condition
+HAVING count(*) >= 2;
+ name  | condition | times_recorded |         dates          
+-------+-----------+----------------+------------------------
+ Gauri | Foot Rot  |              2 | 2026-09-03, 2026-10-23
+(1 row)
+
+SELECT c.name,
+       h.record_date,
+       h.suspected_condition,
+       (SELECT round(avg(d.total_litres), 2) FROM v_daily_milk_totals d
+         WHERE d.cattle_id = h.cattle_id
+           AND d.yield_date BETWEEN h.record_date - 3 AND h.record_date - 1) AS litres_before,
+       (SELECT round(avg(d.total_litres), 2) FROM v_daily_milk_totals d
+         WHERE d.cattle_id = h.cattle_id
+           AND d.yield_date BETWEEN h.record_date AND h.record_date + 2)     AS litres_after
+FROM Health_Records h
+JOIN Cattle c ON c.cattle_id = h.cattle_id
+WHERE h.record_date >= CURRENT_DATE - 7
+  AND h.cattle_id IN (SELECT cattle_id FROM Milk_Yield)
+ORDER BY h.record_date DESC;
+  name   | record_date | suspected_condition | litres_before | litres_after 
+---------+-------------+---------------------+---------------+--------------
+ Lakshmi | 2026-10-25  | Mastitis            |         11.80 |         6.38
+ Gauri   | 2026-10-23  | Foot Rot            |          9.20 |         9.00
+(2 rows)
+
+SELECT h.record_date       AS event_date, 'Health'      AS event_type,
+       coalesce(h.suspected_condition, 'Routine check') AS detail
+FROM Health_Records h WHERE h.cattle_id = 11
+UNION ALL
+SELECT v.administered_date, 'Vaccination', v.vaccine_name
+FROM Vaccinations v WHERE v.cattle_id = 11
+UNION ALL
+SELECT b.breeding_date, 'Breeding', b.method || ' - ' || b.outcome
+FROM Breeding_Records b WHERE b.dam_id = 11
+ORDER BY event_date DESC;
+ event_date | event_type  |      detail      
+------------+-------------+------------------
+ 2026-10-18 | Health      | Routine check
+ 2026-06-10 | Health      | Mastitis
+ 2026-04-11 | Vaccination | FMD
+ 2026-04-11 | Breeding    | AI - Failed
+ 2026-01-01 | Vaccination | HS
+ 2025-12-12 | Health      | Milk Fever
+ 2025-10-13 | Vaccination | FMD
+ 2025-03-03 | Breeding    | Natural - Calved
+ 2020-06-18 | Breeding    | AI - Calved
+(9 rows)
+
+SELECT h.health_id,
+       c.name,
+       h.suspected_condition,
+       round(ts_rank(to_tsvector('english', h.vet_notes), q)::numeric, 3) AS rank,
+       left(h.vet_notes, 70) AS vet_notes
+FROM Health_Records h
+JOIN Cattle c ON c.cattle_id = h.cattle_id,
+     to_tsquery('english', 'udder | milk | quarter | clot') AS q
+WHERE to_tsvector('english', h.vet_notes) @@ q
+ORDER BY rank DESC;
+ health_id |   name    | suspected_condition | rank  |                               vet_notes                                
+-----------+-----------+---------------------+-------+------------------------------------------------------------------------
+         1 | Lakshmi   | Mastitis            | 0.053 | Rear left quarter hot, hard and painful to touch. Milk from that quart
+         2 | Sundari   | Mastitis            | 0.034 | Strip cup test shows clots in the front right quarter. Quarter slightl
+         4 | Kamadhenu | Mastitis            | 0.030 | Teat end injured after a fall in the shed. Mild inflammation of the qu
+         3 | Chandra   | Mastitis            | 0.015 | Udder badly swollen and discoloured with foul smelling bloody secretio
+        11 | Chandra   | Ketosis             | 0.015 | Three weeks after calving: sharp drop in milk, eating only roughage an
+        18 | Pooja     | Calf Scours         | 0.015 | Loose pasty dung and slight dehydration, still drinking milk.
+        19 | Meena     | Tick Fever          | 0.015 | High fever, red coloured urine, pale mucous membranes and many ticks f
+(7 rows)
+

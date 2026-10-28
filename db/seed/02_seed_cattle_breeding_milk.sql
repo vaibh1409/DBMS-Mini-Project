@@ -8,6 +8,7 @@
 -- Cattle
 -- Generation 1 (founders): 1-7 | Generation 2: 8-12
 -- Generation 3: 13-16       | Generation 4: 17-20
+-- Recent calves of the milking cows: 21-27
 -- ---------------------------------------------------------------------
 INSERT INTO Cattle (cattle_id, tag_number, name, breed, sex, date_of_birth, status) VALUES
     ( 1, 'KA-1001', 'Ganga',     'Gir',           'F', '2012-02-14', 'Deceased'),
@@ -31,6 +32,17 @@ INSERT INTO Cattle (cattle_id, tag_number, name, breed, sex, date_of_birth, stat
     (19, 'KA-4003', 'Pooja',     'HF x Sahiwal',  'F', '2024-04-14', 'Active'),
     (20, 'KA-4004', 'Ganesha',   'Gir x Sahiwal', 'M', '2025-01-09', 'Active');
 
+-- Recent calves of the cows that are in milk now. Dates are relative to
+-- today so the herd stays current: a cow gives milk after calving.
+INSERT INTO Cattle (cattle_id, tag_number, name, breed, sex, date_of_birth, status) VALUES
+    (21, 'KA-5001', 'Shanti',  'Gir x Sahiwal', 'F', CURRENT_DATE - 281, 'Active'),
+    (22, 'KA-5002', 'Nandini', 'Sahiwal x HF',  'F', CURRENT_DATE - 327, 'Active'),
+    (23, 'KA-5003', 'Hanuma',  'HF x Gir',      'M', CURRENT_DATE - 321, 'Active'),
+    (24, 'KA-5004', 'Kirti',   'Gir x Sahiwal', 'F', CURRENT_DATE - 410, 'Active'),
+    (25, 'KA-5005', 'Gowri',   'Gir x HF',      'F', CURRENT_DATE - 48,  'Active'),
+    (26, 'KA-5006', 'Varsha',  'HF x Gir',      'F', CURRENT_DATE - 401, 'Active'),
+    (27, 'KA-5007', 'Tara',    'HF x Sahiwal',  'F', CURRENT_DATE - 901, 'Active');
+
 DO $$ BEGIN PERFORM setval(pg_get_serial_sequence('cattle', 'cattle_id'), (SELECT max(cattle_id) FROM Cattle)); END $$;
 
 -- ---------------------------------------------------------------------
@@ -53,10 +65,18 @@ INSERT INTO Breeding_Records (breeding_id, dam_id, sire_id, breeding_date, metho
     (12, 15, 4, '2023-07-06', 'AI',      'Calved', 19, 2),
     (13, 13, 4, '2024-04-01', 'Natural', 'Calved', 20, 1),
     -- Failed and pending
-    (14, 11, 4, '2025-11-18', 'AI',      'Failed', NULL, 2),
+    (14, 11, 4, CURRENT_DATE - 200, 'AI', 'Failed', NULL, 2),
     (15, 12, 7, '2026-02-10', 'AI',      'Failed', NULL, 2),
     (16, 15, 6, '2026-07-02', 'Natural', 'Pending', NULL, 1),
-    (17, 14, 4, '2026-08-20', 'AI',      'Pending', NULL, 2);
+    (17, 14, 4, '2026-08-20', 'AI',      'Pending', NULL, 2),
+    -- Recent calvings (calf ids 21-27), relative to today
+    (18,  8, 4, CURRENT_DATE - 281 - 283, 'AI',      'Calved', 21, 2),
+    (19, 10, 6, CURRENT_DATE - 327 - 283, 'AI',      'Calved', 22, 2),
+    (20, 11, 7, CURRENT_DATE - 321 - 283, 'Natural', 'Calved', 23, 1),
+    (21, 12, 4, CURRENT_DATE - 410 - 283, 'AI',      'Calved', 24, 2),
+    (22, 13, 6, CURRENT_DATE -  48 - 283, 'AI',      'Calved', 25, 2),
+    (23, 15, 7, CURRENT_DATE - 401 - 283, 'Natural', 'Calved', 26, 1),
+    (24,  5, 4, CURRENT_DATE - 901 - 283, 'AI',      'Calved', 27, 2);
 
 DO $$ BEGIN PERFORM setval(pg_get_serial_sequence('breeding_records', 'breeding_id'), (SELECT max(breeding_id) FROM Breeding_Records)); END $$;
 

@@ -1,0 +1,36 @@
+HerdSense DDL constraint test results: cattle_breeding_milk
+PostgreSQL 16, run on 2026-10-28
+Command: psql -d herdsense -f docs/tests/ddl_tests_cattle_breeding_milk.sql
+
+ #  |                           test                           |     expected     |      actual      | result 
+----+----------------------------------------------------------+------------------+------------------+--------
+  1 | C1 duplicate tag_number                                  | rejected (23505) | rejected (23505) | PASS
+  2 | C2 invalid sex                                           | rejected (23514) | rejected (23514) | PASS
+  3 | C3 date_of_birth in the future                           | rejected (23514) | rejected (23514) | PASS
+  4 | C4 invalid status                                        | rejected (23514) | rejected (23514) | PASS
+  5 | C5 missing breed (NOT NULL)                              | rejected (23502) | rejected (23502) | PASS
+  6 | C6 status defaults to Active                             | true             | true             | PASS
+  7 | B1 dam and sire are the same animal                      | rejected (23514) | rejected (23514) | PASS
+  8 | B2 calf is its own parent                                | rejected (23514) | rejected (23514) | PASS
+  9 | B3 outcome Calved without a calf                         | rejected (23514) | rejected (23514) | PASS
+ 10 | B4 calf recorded while outcome is Pending                | rejected (23514) | rejected (23514) | PASS
+ 11 | B5 invalid method                                        | rejected (23514) | rejected (23514) | PASS
+ 12 | B6 dam does not exist (foreign key)                      | rejected (23503) | rejected (23503) | PASS
+ 13 | B7 valid calved breeding record accepted                 | true             | true             | PASS
+ 14 | B8 same calf born twice (UNIQUE calf_id)                 | rejected (23505) | rejected (23505) | PASS
+ 15 | B9 deleting a parent with breeding records (RESTRICT)    | rejected (23503) | rejected (23503) | PASS
+ 16 | M1 negative litres                                       | rejected (23514) | rejected (23514) | PASS
+ 17 | M2 invalid session                                       | rejected (23514) | rejected (23514) | PASS
+ 18 | M3 yield_date in the future                              | rejected (23514) | rejected (23514) | PASS
+ 19 | M4 second reading for the same session (UNIQUE)          | rejected (23505) | rejected (23505) | PASS
+ 20 | M5 v_daily_milk_totals adds both sessions                | true             | true             | PASS
+ 21 | M6 deleting staff who recorded yields (RESTRICT)         | rejected (23503) | rejected (23503) | PASS
+ 22 | M7 deleting an animal removes its milk records (CASCADE) | true             | true             | PASS
+ 23 | M8 no milk records left for the deleted animal           | true             | true             | PASS
+(23 rows)
+
+ passed | total 
+--------+-------
+     23 |    23
+(1 row)
+

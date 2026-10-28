@@ -78,7 +78,7 @@ If the embedding step is unavailable, notes are searched with PostgreSQL full-te
 |---|---|
 | Create | Saving a health record embeds `vet_notes` and inserts the `Note_Embeddings` row in the same transaction |
 | Read | Similarity search as above, plus listing the embedding metadata of a note |
-| Update | Editing `vet_notes` re-embeds the text and updates `embedding` and the metadata columns in one transaction |
+| Update | Editing `vet_notes` re-embeds the text and updates `embedding` and the metadata columns in one transaction. The trigger `trg_health_embedding_sync` keeps the vector store consistent even for edits made outside the app: it copies changed metadata to `Note_Embeddings` and deletes an embedding whose note text has changed |
 | Delete | Deleting a health record removes its embedding through the ON DELETE CASCADE foreign key, and a single embedding can also be deleted directly |
 
 ## Why a vector store at all

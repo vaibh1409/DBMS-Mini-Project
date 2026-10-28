@@ -82,15 +82,31 @@ ORDER BY matches DESC, avg_similarity DESC;
 -- ---------------------------------------------------------------------
 BEGIN;
 
--- UPDATE: the lab confirms note 24 (routine check) was early mastitis.
--- The condition is changed on the health record and on the embedding's
--- metadata together, inside one transaction.
-UPDATE Health_Records   SET suspected_condition = 'Mastitis' WHERE health_id = 24;
-UPDATE Note_Embeddings  SET suspected_condition = 'Mastitis' WHERE health_id = 24;
+-- UPDATE 1 (metadata): the lab confirms note 24 (routine check) was
+-- early mastitis. Only the health record is updated; the trigger
+-- trg_health_embedding_sync copies the new condition into the
+-- embedding's metadata.
+UPDATE Health_Records SET suspected_condition = 'Mastitis' WHERE health_id = 24;
 
 SELECT h.health_id, h.suspected_condition AS record_condition, ne.suspected_condition AS embedding_condition
 FROM Health_Records h JOIN Note_Embeddings ne ON ne.health_id = h.health_id
 WHERE h.health_id = 24;
+
+-- UPDATE 2 (vector): set a vector directly. Here note 24's embedding is
+-- replaced with note 1's vector, so note 24 now matches note 1 exactly.
+-- (Re-embedding new text needs the model: scripts/vector_demo.js update.)
+UPDATE Note_Embeddings
+   SET embedding = (SELECT embedding FROM Note_Embeddings WHERE health_id = 1)
+ WHERE health_id = 24;
+
+SELECT round((1 - (a.embedding <=> b.embedding))::numeric, 3) AS similarity_note_24_to_note_1
+FROM Note_Embeddings a, Note_Embeddings b
+WHERE a.health_id = 24 AND b.health_id = 1;
+
+-- When the note text itself changes, the trigger deletes the old
+-- embedding, because it no longer describes the text
+UPDATE Health_Records SET vet_notes = 'Rechecked: udder normal, milk clear.' WHERE health_id = 24;
+SELECT count(*) AS embeddings_for_note_24 FROM Note_Embeddings WHERE health_id = 24;
 
 -- DELETE 1: remove one embedding directly (the health record stays)
 DELETE FROM Note_Embeddings WHERE health_id = 23;

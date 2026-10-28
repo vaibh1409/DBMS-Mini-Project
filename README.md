@@ -128,7 +128,7 @@ db/
   schema/     DDL: tables, indexes, views, ALTER/DROP demo
   logic/      Procedures, triggers, roles and grants
   seed/       Sample data
-  queries/    Important queries
+  queries/    DML demonstrations and important queries
   vector/     pgvector setup, vector table, vector queries
 scripts/      Embedding generation and vector demo scripts
 src/          Next.js app (pages, API route handlers, components, lib)
@@ -157,6 +157,14 @@ psql -U <admin_user> -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinati
 
 # ALTER and DROP demonstration (leaves the schema unchanged)
 psql -U <admin_user> -d herdsense -f db/schema/alter_drop_demo.sql
+
+# DML demonstrations: INSERT, UPDATE, DELETE (rolled back, so the sample data is kept)
+psql -U <admin_user> -d herdsense -f db/queries/dml_cattle_breeding_milk.sql
+psql -U <admin_user> -d herdsense -f db/queries/dml_health_vaccinations.sql
+
+# Important queries: joins, GROUP BY/HAVING, nested and correlated subqueries, recursive CTEs
+psql -U <admin_user> -d herdsense -f db/queries/queries_cattle_breeding_milk.sql
+psql -U <admin_user> -d herdsense -f db/queries/queries_health_vaccinations.sql
 
 # Vector database tests (after `npm run embed`)
 node docs/tests/vector_tests.js

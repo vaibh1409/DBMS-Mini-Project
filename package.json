@@ -1,0 +1,17 @@
+{
+  "name": "herdsense",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HerdSense: Livestock Health & Breeding Record Management for Dairy Farms",
+  "type": "module",
+  "scripts": {
+    "embed": "node scripts/embed_notes.js",
+    "vector": "node scripts/vector_demo.js"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
+    "pg": "^8.16.3"
+  }
+}

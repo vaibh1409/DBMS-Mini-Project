@@ -1,0 +1,404 @@
+HerdSense query results: cattle_breeding_milk
+PostgreSQL 16 with the sample data, run on 2026-10-28. Dates in the sample data are relative to the run date.
+Commands: psql -d herdsense -f db/queries/dml_cattle_breeding_milk.sql   and   psql -d herdsense -f db/queries/queries_cattle_breeding_milk.sql
+
+########## DML (rolled back) ##########
+BEGIN;
+BEGIN
+WITH new_calf AS (
+    INSERT INTO Cattle (tag_number, name, breed, sex, date_of_birth)
+    VALUES ('KA-4005', 'Ganga II', 'HF Cross', 'F', CURRENT_DATE)
+    RETURNING cattle_id
+)
+UPDATE Breeding_Records b
+   SET outcome = 'Calved',
+       calf_id = new_calf.cattle_id
+  FROM new_calf
+ WHERE b.breeding_id = 16;
+UPDATE 1
+SELECT b.breeding_id, b.outcome, c.tag_number AS calf_tag, c.name AS calf_name, c.status
+FROM Breeding_Records b
+JOIN Cattle c ON c.cattle_id = b.calf_id
+WHERE b.breeding_id = 16;
+ breeding_id | outcome | calf_tag | calf_name | status 
+-------------+---------+----------+-----------+--------
+          16 | Calved  | KA-4005  | Ganga II  | Active
+(1 row)
+
+INSERT INTO Milk_Yield (cattle_id, yield_date, session, litres, recorded_by) VALUES
+    (14, CURRENT_DATE, 'Morning', 6.20, 3),
+    (14, CURRENT_DATE, 'Evening', 5.10, 5);
+INSERT 0 2
+SELECT cattle_id, yield_date, session, litres FROM Milk_Yield
+WHERE cattle_id = 14 AND yield_date = CURRENT_DATE
+ORDER BY session DESC;
+ cattle_id | yield_date | session | litres 
+-----------+------------+---------+--------
+        14 | 2026-10-28 | Morning |   6.20
+        14 | 2026-10-28 | Evening |   5.10
+(2 rows)
+
+UPDATE Milk_Yield
+   SET litres = 5.40
+ WHERE cattle_id = 14 AND yield_date = CURRENT_DATE AND session = 'Evening';
+UPDATE 1
+UPDATE Cattle SET status = 'Sold' WHERE cattle_id = 20;
+UPDATE 1
+UPDATE Breeding_Records SET breeding_date = CURRENT_DATE - 320 WHERE breeding_id = 17;
+UPDATE 1
+UPDATE Breeding_Records
+   SET outcome = 'Failed'
+ WHERE breeding_id IN (SELECT breeding_id
+                         FROM Breeding_Records
+                        WHERE outcome = 'Pending'
+                          AND breeding_date < CURRENT_DATE - 300);
+UPDATE 1
+SELECT breeding_id, dam_id, breeding_date, outcome
+FROM Breeding_Records
+WHERE breeding_id IN (16, 17)
+ORDER BY breeding_id;
+ breeding_id | dam_id | breeding_date | outcome 
+-------------+--------+---------------+---------
+          16 |     15 | 2026-07-02    | Calved
+          17 |     14 | 2025-12-12    | Failed
+(2 rows)
+
+DELETE FROM Breeding_Records WHERE breeding_id = 15 RETURNING breeding_id, dam_id, outcome;
+ breeding_id | dam_id | outcome 
+-------------+--------+---------
+          15 |     12 | Failed
+(1 row)
+
+DELETE 1
+DELETE FROM Milk_Yield WHERE cattle_id = 14 AND yield_date = CURRENT_DATE;
+DELETE 2
+SELECT status, count(*) AS animals
+FROM Cattle
+GROUP BY status
+ORDER BY status;
+  status  | animals 
+----------+---------
+ Active   |      22
+ Deceased |       1
+ Sold     |       5
+(3 rows)
+
+ROLLBACK;
+ROLLBACK
+SELECT (SELECT count(*) FROM Cattle)           AS cattle,
+       (SELECT count(*) FROM Breeding_Records) AS breeding_records,
+       (SELECT outcome FROM Breeding_Records WHERE breeding_id = 16) AS breeding_16_outcome;
+ cattle | breeding_records | breeding_16_outcome 
+--------+------------------+---------------------
+     27 |               24 | Pending
+(1 row)
+
+
+########## QUERIES ##########
+SELECT b.breeding_id,
+       b.breeding_date,
+       b.method,
+       dam.name   AS dam,
+       sire.name  AS sire,
+       calf.name  AS calf,
+       calf.date_of_birth
+FROM Breeding_Records b
+JOIN Cattle dam  ON dam.cattle_id  = b.dam_id
+JOIN Cattle sire ON sire.cattle_id = b.sire_id
+JOIN Cattle calf ON calf.cattle_id = b.calf_id
+ORDER BY calf.date_of_birth;
+ breeding_id | breeding_date | method  |    dam    |  sire  |   calf    | date_of_birth 
+-------------+---------------+---------+-----------+--------+-----------+---------------
+           1 | 2015-05-24    | Natural | Ganga     | Bhima  | Gauri     | 2016-03-02
+           2 | 2016-06-05    | Natural | Ganga     | Bhima  | Nandi     | 2017-03-15
+           3 | 2016-07-16    | Natural | Kaveri    | Arjuna | Lakshmi   | 2017-04-25
+           4 | 2016-10-29    | AI      | Tunga     | Shiva  | Sundari   | 2017-08-08
+           5 | 2017-05-12    | AI      | Kaveri    | Bhima  | Kamadhenu | 2018-02-19
+           6 | 2019-04-07    | AI      | Gauri     | Veera  | Radha     | 2020-01-15
+           7 | 2019-11-25    | AI      | Lakshmi   | Veera  | Meena     | 2020-09-03
+           8 | 2020-06-18    | AI      | Sundari   | Veera  | Chandra   | 2021-03-28
+           9 | 2020-10-02    | Natural | Gauri     | Veera  | Basava    | 2021-07-12
+          10 | 2022-05-13    | AI      | Radha     | Arjuna | Tulsi     | 2023-02-20
+          11 | 2022-12-26    | AI      | Meena     | Shiva  | Kalyani   | 2023-10-05
+          12 | 2023-07-06    | AI      | Chandra   | Arjuna | Pooja     | 2024-04-14
+          24 | 2023-08-01    | AI      | Tunga     | Arjuna | Tara      | 2024-05-10
+          13 | 2024-04-01    | Natural | Radha     | Arjuna | Ganesha   | 2025-01-09
+          21 | 2024-12-04    | AI      | Kamadhenu | Arjuna | Kirti     | 2025-09-13
+          23 | 2024-12-13    | Natural | Chandra   | Veera  | Varsha    | 2025-09-22
+          19 | 2025-02-25    | AI      | Lakshmi   | Shiva  | Nandini   | 2025-12-05
+          20 | 2025-03-03    | Natural | Sundari   | Veera  | Hanuma    | 2025-12-11
+          18 | 2025-04-12    | AI      | Gauri     | Arjuna | Shanti    | 2026-01-20
+          22 | 2025-12-01    | AI      | Radha     | Shiva  | Gowri     | 2026-09-10
+(20 rows)
+
+SELECT c.tag_number,
+       c.name,
+       c.breed,
+       c.sex,
+       dam.name  AS dam,
+       sire.name AS sire
+FROM Cattle c
+LEFT JOIN Breeding_Records b ON b.calf_id    = c.cattle_id
+LEFT JOIN Cattle dam         ON dam.cattle_id  = b.dam_id
+LEFT JOIN Cattle sire        ON sire.cattle_id = b.sire_id
+ORDER BY c.cattle_id;
+ tag_number |   name    |     breed     | sex |    dam    |  sire  
+------------+-----------+---------------+-----+-----------+--------
+ KA-1001    | Ganga     | Gir           | F   |           | 
+ KA-1002    | Bhima     | Gir           | M   |           | 
+ KA-1003    | Kaveri    | Sahiwal       | F   |           | 
+ KA-1004    | Arjuna    | Sahiwal       | M   |           | 
+ KA-1005    | Tunga     | HF Cross      | F   |           | 
+ KA-1006    | Shiva     | HF Cross      | M   |           | 
+ KA-1007    | Veera     | Gir           | M   |           | 
+ KA-2001    | Gauri     | Gir           | F   | Ganga     | Bhima
+ KA-2002    | Nandi     | Gir           | M   | Ganga     | Bhima
+ KA-2003    | Lakshmi   | Sahiwal       | F   | Kaveri    | Arjuna
+ KA-2004    | Sundari   | HF Cross      | F   | Tunga     | Shiva
+ KA-2005    | Kamadhenu | Gir x Sahiwal | F   | Kaveri    | Bhima
+ KA-3001    | Radha     | Gir           | F   | Gauri     | Veera
+ KA-3002    | Meena     | Sahiwal x Gir | F   | Lakshmi   | Veera
+ KA-3003    | Chandra   | HF Cross      | F   | Sundari   | Veera
+ KA-3004    | Basava    | Gir           | M   | Gauri     | Veera
+ KA-4001    | Tulsi     | Gir x Sahiwal | F   | Radha     | Arjuna
+ KA-4002    | Kalyani   | Sahiwal x HF  | F   | Meena     | Shiva
+ KA-4003    | Pooja     | HF x Sahiwal  | F   | Chandra   | Arjuna
+ KA-4004    | Ganesha   | Gir x Sahiwal | M   | Radha     | Arjuna
+ KA-5001    | Shanti    | Gir x Sahiwal | F   | Gauri     | Arjuna
+ KA-5002    | Nandini   | Sahiwal x HF  | F   | Lakshmi   | Shiva
+ KA-5003    | Hanuma    | HF x Gir      | M   | Sundari   | Veera
+ KA-5004    | Kirti     | Gir x Sahiwal | F   | Kamadhenu | Arjuna
+ KA-5005    | Gowri     | Gir x HF      | F   | Radha     | Shiva
+ KA-5006    | Varsha    | HF x Gir      | F   | Chandra   | Veera
+ KA-5007    | Tara      | HF x Sahiwal  | F   | Tunga     | Arjuna
+(27 rows)
+
+SELECT d.tag_number,
+       d.name,
+       count(*)                      AS days_recorded,
+       round(avg(d.total_litres), 2) AS avg_daily_litres,
+       min(d.total_litres)           AS lowest_day,
+       max(d.total_litres)           AS highest_day,
+       sum(d.total_litres)           AS total_litres_30_days
+FROM v_daily_milk_totals d
+WHERE d.yield_date > CURRENT_DATE - 30
+GROUP BY d.cattle_id, d.tag_number, d.name
+HAVING avg(d.total_litres) > 10
+ORDER BY avg_daily_litres DESC;
+ tag_number |   name    | days_recorded | avg_daily_litres | lowest_day | highest_day | total_litres_30_days 
+------------+-----------+---------------+------------------+------------+-------------+----------------------
+ KA-2004    | Sundari   |            30 |            19.30 |      18.70 |       19.90 |               579.00
+ KA-3003    | Chandra   |            30 |            17.00 |      16.40 |       17.60 |               510.00
+ KA-2003    | Lakshmi   |            30 |            11.10 |       6.17 |       12.40 |               333.04
+ KA-2005    | Kamadhenu |            30 |            11.00 |      10.40 |       11.60 |               330.00
+ KA-3001    | Radha     |            30 |            10.20 |       9.60 |       10.80 |               306.00
+(5 rows)
+
+SELECT d.name,
+       round(avg(d.total_litres), 2) AS avg_daily_litres
+FROM v_daily_milk_totals d
+GROUP BY d.cattle_id, d.name
+HAVING avg(d.total_litres) > (SELECT avg(total_litres) FROM v_daily_milk_totals)
+ORDER BY avg_daily_litres DESC;
+  name   | avg_daily_litres 
+---------+------------------
+ Sundari |            19.30
+ Chandra |            17.00
+(2 rows)
+
+SELECT recent.name,
+       recent.last_3_days_avg,
+       recent.earlier_avg,
+       round(100 * (recent.last_3_days_avg - recent.earlier_avg) / recent.earlier_avg, 1) AS change_pct,
+       CASE WHEN recent.last_3_days_avg < 0.8 * recent.earlier_avg THEN 'DROP' ELSE 'normal' END AS flag
+FROM (
+    SELECT c.cattle_id,
+           c.name,
+           (SELECT round(avg(d.total_litres), 2)
+              FROM v_daily_milk_totals d
+             WHERE d.cattle_id = c.cattle_id
+               AND d.yield_date > CURRENT_DATE - 3)  AS last_3_days_avg,
+           (SELECT round(avg(d.total_litres), 2)
+              FROM v_daily_milk_totals d
+             WHERE d.cattle_id = c.cattle_id
+               AND d.yield_date <= CURRENT_DATE - 3) AS earlier_avg
+    FROM Cattle c
+    WHERE EXISTS (SELECT 1 FROM Milk_Yield m WHERE m.cattle_id = c.cattle_id)
+) AS recent
+ORDER BY change_pct;
+   name    | last_3_days_avg | earlier_avg | change_pct |  flag  
+-----------+-----------------+-------------+------------+--------
+ Lakshmi   |            6.44 |       11.62 |      -44.6 | DROP
+ Sundari   |           19.10 |       19.32 |       -1.1 | normal
+ Chandra   |           16.90 |       17.01 |       -0.6 | normal
+ Radha     |           10.30 |       10.19 |        1.1 | normal
+ Gauri     |            9.30 |        9.19 |        1.2 | normal
+ Kamadhenu |           11.20 |       10.98 |        2.0 | normal
+(6 rows)
+
+SELECT s.name                                             AS sire,
+       count(*)                                           AS breedings,
+       count(*) FILTER (WHERE b.outcome = 'Calved')       AS calved,
+       count(*) FILTER (WHERE b.outcome = 'Failed')       AS failed,
+       count(*) FILTER (WHERE b.outcome = 'Pending')      AS pending,
+       round(100.0 * count(*) FILTER (WHERE b.outcome = 'Calved')
+             / NULLIF(count(*) FILTER (WHERE b.outcome <> 'Pending'), 0), 1) AS success_rate_pct
+FROM Breeding_Records b
+JOIN Cattle s ON s.cattle_id = b.sire_id
+GROUP BY s.cattle_id, s.name
+HAVING count(*) >= 2
+ORDER BY success_rate_pct DESC, breedings DESC;
+  sire  | breedings | calved | failed | pending | success_rate_pct 
+--------+-----------+--------+--------+---------+------------------
+ Shiva  |         5 |      4 |      0 |       1 |            100.0
+ Bhima  |         3 |      3 |      0 |       0 |            100.0
+ Arjuna |         9 |      7 |      1 |       1 |             87.5
+ Veera  |         7 |      6 |      1 |       0 |             85.7
+(4 rows)
+
+SELECT c.name, c.breed, 'proven sire' AS note
+FROM Cattle c
+WHERE c.sex = 'M' AND c.status = 'Active'
+  AND EXISTS (SELECT 1 FROM Breeding_Records b
+               WHERE b.sire_id = c.cattle_id AND b.outcome = 'Calved')
+UNION ALL
+SELECT c.name, c.breed, 'never bred' AS note
+FROM Cattle c
+WHERE c.sex = 'F' AND c.status = 'Active'
+  AND NOT EXISTS (SELECT 1 FROM Breeding_Records b WHERE b.dam_id = c.cattle_id)
+ORDER BY note, name;
+  name   |     breed     |    note     
+---------+---------------+-------------
+ Gowri   | Gir x HF      | never bred
+ Kalyani | Sahiwal x HF  | never bred
+ Kirti   | Gir x Sahiwal | never bred
+ Nandini | Sahiwal x HF  | never bred
+ Pooja   | HF x Sahiwal  | never bred
+ Shanti  | Gir x Sahiwal | never bred
+ Tara    | HF x Sahiwal  | never bred
+ Tulsi   | Gir x Sahiwal | never bred
+ Varsha  | HF x Gir      | never bred
+ Arjuna  | Sahiwal       | proven sire
+ Shiva   | HF Cross      | proven sire
+ Veera   | Gir           | proven sire
+(12 rows)
+
+WITH RECURSIVE ancestors AS (
+    SELECT c.cattle_id,
+           c.name,
+           0                 AS generation,
+           'self'::text      AS relation,
+           c.name::text      AS path
+    FROM Cattle c
+    WHERE c.cattle_id = 17
+    UNION ALL
+    SELECT parent.cattle_id,
+           parent.name,
+           a.generation + 1,
+           CASE WHEN parent.cattle_id = b.dam_id THEN 'dam' ELSE 'sire' END,
+           a.path || ' <- ' || parent.name
+    FROM ancestors a
+    JOIN Breeding_Records b ON b.calf_id = a.cattle_id
+    JOIN Cattle parent      ON parent.cattle_id IN (b.dam_id, b.sire_id)
+)
+SELECT generation, relation, name, path
+FROM ancestors
+ORDER BY generation, relation, name;
+ generation | relation |  name  |               path               
+------------+----------+--------+----------------------------------
+          0 | self     | Tulsi  | Tulsi
+          1 | dam      | Radha  | Tulsi <- Radha
+          1 | sire     | Arjuna | Tulsi <- Arjuna
+          2 | dam      | Gauri  | Tulsi <- Radha <- Gauri
+          2 | sire     | Veera  | Tulsi <- Radha <- Veera
+          3 | dam      | Ganga  | Tulsi <- Radha <- Gauri <- Ganga
+          3 | sire     | Bhima  | Tulsi <- Radha <- Gauri <- Bhima
+(7 rows)
+
+WITH RECURSIVE descendants AS (
+    SELECT c.cattle_id, c.name, 0 AS generation
+    FROM Cattle c
+    WHERE c.cattle_id = 1
+    UNION ALL
+    SELECT calf.cattle_id, calf.name, d.generation + 1
+    FROM descendants d
+    JOIN Breeding_Records b ON d.cattle_id IN (b.dam_id, b.sire_id)
+    JOIN Cattle calf        ON calf.cattle_id = b.calf_id
+)
+SELECT generation, name, cattle_id
+FROM descendants
+WHERE generation > 0
+ORDER BY generation, name;
+ generation |  name   | cattle_id 
+------------+---------+-----------
+          1 | Gauri   |         8
+          1 | Nandi   |         9
+          2 | Basava  |        16
+          2 | Radha   |        13
+          2 | Shanti  |        21
+          3 | Ganesha |        20
+          3 | Gowri   |        25
+          3 | Tulsi   |        17
+(8 rows)
+
+WITH RECURSIVE maternal_line AS (
+    SELECT c.cattle_id, c.name AS founder, c.cattle_id AS founder_id
+    FROM Cattle c
+    WHERE c.sex = 'F'
+      AND NOT EXISTS (SELECT 1 FROM Breeding_Records b WHERE b.calf_id = c.cattle_id)
+    UNION ALL
+    SELECT b.calf_id, m.founder, m.founder_id
+    FROM maternal_line m
+    JOIN Breeding_Records b ON b.dam_id = m.cattle_id
+    WHERE b.calf_id IS NOT NULL
+)
+SELECT m.founder                       AS bloodline_founder,
+       h.suspected_condition           AS condition,
+       count(*)                        AS cases,
+       count(DISTINCT h.cattle_id)     AS animals_affected,
+       string_agg(DISTINCT c.name, ', ') AS animals
+FROM maternal_line m
+JOIN Health_Records h ON h.cattle_id = m.cattle_id
+JOIN Cattle c         ON c.cattle_id = h.cattle_id
+WHERE h.suspected_condition IS NOT NULL
+GROUP BY m.founder_id, m.founder, h.suspected_condition
+HAVING count(DISTINCT h.cattle_id) >= 2
+ORDER BY animals_affected DESC, cases DESC;
+ bloodline_founder | condition  | cases | animals_affected |      animals       
+-------------------+------------+-------+------------------+--------------------
+ Kaveri            | Bloat      |     2 |                2 | Kalyani, Kamadhenu
+ Kaveri            | Mastitis   |     2 |                2 | Kamadhenu, Lakshmi
+ Tunga             | Mastitis   |     2 |                2 | Chandra, Sundari
+ Tunga             | Milk Fever |     2 |                2 | Sundari, Tunga
+(4 rows)
+
+SELECT c.name,
+       last_calving.last_calving_date,
+       CURRENT_DATE - last_calving.last_calving_date AS days_since_calving,
+       CASE
+           WHEN EXISTS (SELECT 1 FROM Breeding_Records p
+                         WHERE p.dam_id = c.cattle_id AND p.outcome = 'Pending') THEN 'already bred (pending)'
+           WHEN CURRENT_DATE - last_calving.last_calving_date >= 60            THEN 'ready to breed'
+           ELSE 'too soon after calving'
+       END AS breeding_status
+FROM Cattle c
+JOIN (
+    SELECT b.dam_id, max(calf.date_of_birth) AS last_calving_date
+    FROM Breeding_Records b
+    JOIN Cattle calf ON calf.cattle_id = b.calf_id
+    GROUP BY b.dam_id
+) AS last_calving ON last_calving.dam_id = c.cattle_id
+WHERE c.status = 'Active'
+  AND EXISTS (SELECT 1 FROM Milk_Yield m
+               WHERE m.cattle_id = c.cattle_id AND m.yield_date > CURRENT_DATE - 30)
+ORDER BY days_since_calving DESC;
+   name    | last_calving_date | days_since_calving |    breeding_status     
+-----------+-------------------+--------------------+------------------------
+ Kamadhenu | 2025-09-13        |                410 | ready to breed
+ Chandra   | 2025-09-22        |                401 | already bred (pending)
+ Lakshmi   | 2025-12-05        |                327 | ready to breed
+ Sundari   | 2025-12-11        |                321 | ready to breed
+ Gauri     | 2026-01-20        |                281 | ready to breed
+ Radha     | 2026-09-10        |                 48 | too soon after calving
+(6 rows)
+

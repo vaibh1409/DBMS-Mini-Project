@@ -65,9 +65,11 @@ psql -U <admin_user> -c "CREATE DATABASE herdsense;"
 psql -U <admin_user> -d herdsense -f db/vector/setup_pgvector.sql
 
 # 5. Run SQL scripts in order
-psql -U <admin_user> -d herdsense -f db/schema/01_create_tables.sql
-psql -U <admin_user> -d herdsense -f db/schema/02_indexes.sql
-psql -U <admin_user> -d herdsense -f db/schema/03_views.sql
+psql -U <admin_user> -d herdsense -f db/schema/01_staff.sql
+psql -U <admin_user> -d herdsense -f db/schema/02_cattle_breeding_milk.sql
+psql -U <admin_user> -d herdsense -f db/schema/03_health_vaccinations.sql
+psql -U <admin_user> -d herdsense -f db/schema/04_indexes.sql
+psql -U <admin_user> -d herdsense -f db/schema/05_views.sql
 psql -U <admin_user> -d herdsense -f db/logic/procedures.sql
 psql -U <admin_user> -d herdsense -f db/logic/triggers.sql
 psql -U <admin_user> -d herdsense -f db/logic/roles_grants.sql
@@ -117,6 +119,19 @@ docs/
 - [Database choice and justification](docs/design/database_choice.md)
 
 Screenshots, test results and the final report are added to `docs/` as the project progresses.
+
+## Tests and Demos
+
+```bash
+# Constraint tests (run inside a transaction and roll back, so no data is kept)
+psql -U <admin_user> -d herdsense -f docs/tests/ddl_tests_cattle_breeding_milk.sql
+psql -U <admin_user> -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinations.sql
+
+# ALTER and DROP demonstration (leaves the schema unchanged)
+psql -U <admin_user> -d herdsense -f db/schema/alter_drop_demo.sql
+```
+
+Saved results are in `docs/tests/results_*.txt`.
 
 ## Role-Based Access
 

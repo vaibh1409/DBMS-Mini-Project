@@ -1,0 +1,37 @@
+HerdSense API test results: cattle, pedigree, breeding, calving, milk
+Run on 2026-11-16 against the seeded database
+Command: node docs/tests/api_tests_cattle_breeding_milk.js  (with npm run dev running)
+
+┌─────────┬──────────────────────────────────────────────────────────────────────┬────────┬──────────────────────────────────────────────────────────────────────────┐
+│ (index) │ test                                                                 │ result │ detail                                                                   │
+├─────────┼──────────────────────────────────────────────────────────────────────┼────────┼──────────────────────────────────────────────────────────────────────────┤
+│ 0       │ 'C1 every role can list cattle, with filters'                        │ 'PASS' │ '17 active cows'                                                         │
+│ 1       │ 'C2 search by name'                                                  │ 'PASS' │ 'Tulsi'                                                                  │
+│ 2       │ 'C3 Vets see parents; Farmhands see only the animal'                 │ 'PASS' │ 'dam Radha, sire Arjuna'                                                 │
+│ 3       │ 'C4 a Vet cannot add animals'                                        │ 'PASS' │ 'This action is not available to the Vet role'                           │
+│ 4       │ 'C5 the Owner can add an animal'                                     │ 'PASS' │ 'cattle_id 49'                                                           │
+│ 5       │ 'C6 a duplicate tag number is refused (UNIQUE)'                      │ 'PASS' │ 'duplicate key value violates unique constraint "uq_cattle_tag"'         │
+│ 6       │ 'C7 an invalid sex is refused (CHECK)'                               │ 'PASS' │ 'new row for relation "cattle" violates check constraint "chk_cattle_se' │
+│ 7       │ 'C8 the Owner can edit an animal'                                    │ 'PASS' │ 'Renamed Cow'                                                            │
+│ 8       │ 'C9 deleting a parent is refused (ON DELETE RESTRICT)'               │ 'PASS' │ 'update or delete on table "cattle" violates foreign key constraint "fk' │
+│ 9       │ 'P1 pedigree of Tulsi goes back three generations'                   │ 'PASS' │ 'Bhima, Ganga'                                                           │
+│ 10      │ 'P2 the generations limit stops at the parents'                      │ 'PASS' │ '3 rows'                                                                 │
+│ 11      │ 'P3 an unknown animal gives 404'                                     │ 'PASS' │ 'Animal 99999 not found'                                                 │
+│ 12      │ 'P4 a Farmhand cannot view pedigrees'                                │ 'PASS' │ 'This action is not available to the Farmhand role'                      │
+│ 13      │ 'B1 a bull recorded as the dam is refused (trigger)'                 │ 'PASS' │ 'Dam 4 is not female.'                                                   │
+│ 14      │ 'B2 a Vet cannot record breedings'                                   │ 'PASS' │ 'This action is not available to the Vet role'                           │
+│ 15      │ 'B3 the Owner can record a breeding (Pending)'                       │ 'PASS' │ 'breeding_id 41'                                                         │
+│ 16      │ 'B4 a calf dated before the breeding is refused, nothing half-saved' │ 'PASS' │ '400, 0 calves saved'                                                    │
+│ 17      │ 'B5 recording the calving adds the calf and closes the breeding'     │ 'PASS' │ 'Calved, calf Test Calf'                                                 │
+│ 18      │ 'B6 the same breeding cannot calve twice'                            │ 'PASS' │ 'Breeding record 41 is already Calved.'                                  │
+│ 19      │ 'M1 a Farmhand can record milk'                                      │ 'PASS' │ 'yield_id 379'                                                           │
+│ 20      │ 'M2 a second reading for the same session is refused (UNIQUE)'       │ 'PASS' │ 'duplicate key value violates unique constraint "uq_yield_session"'      │
+│ 21      │ 'M3 milk for a bull is refused (trigger)'                            │ 'PASS' │ 'Animal 4 is male; milk yield cannot be recorded.'                       │
+│ 22      │ 'M4 negative litres are refused (CHECK)'                             │ 'PASS' │ 'new row for relation "milk_yield" violates check constraint "chk_yield' │
+│ 23      │ 'M5 a Vet cannot record milk'                                        │ 'PASS' │ 'This action is not available to the Vet role'                           │
+│ 24      │ 'M6 daily milk totals for one cow'                                   │ 'PASS' │ '7 days'                                                                 │
+│ 25      │ 'M7 an invalid number of days is refused'                            │ 'PASS' │ 'days must be a whole number from 1 to 365'                              │
+│ 26      │ 'M8 yield-anomaly detection flags Lakshmi with her mastitis exam'    │ 'PASS' │ 'Lakshmi -45.0%'                                                         │
+│ 27      │ 'M9 a Farmhand cannot run anomaly detection'                         │ 'PASS' │ 'This action is not available to the Farmhand role'                      │
+└─────────┴──────────────────────────────────────────────────────────────────────┴────────┴──────────────────────────────────────────────────────────────────────────┘
+passed 28 / 28

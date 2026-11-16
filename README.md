@@ -40,77 +40,46 @@ HerdSense helps dairy farms manage cattle health, vaccination, breeding, and mil
 
 ## Prerequisites
 
-- Node.js 18+ and npm
-- PostgreSQL 15+ with the `pgvector` extension installed (see below)
+- Node.js 20.9 or later, and npm
+- PostgreSQL 15+ with the `pgvector` extension. The simplest way on Windows is Docker Desktop, used below.
 - Git
 - Internet access the first time embeddings are generated (the model, about 90 MB, is downloaded once and cached)
 
-### Installing pgvector on Windows
+## Setup & Run (Windows, Docker)
 
-Either option works:
+Run these in **Command Prompt** (not PowerShell), from the project folder.
 
-- **Build it for your installed PostgreSQL.** Install Visual Studio Build Tools with "Desktop development with C++", open "x64 Native Tools Command Prompt for VS" as administrator, and run (change `16` to your PostgreSQL version):
-  ```
-  set "PGROOT=C:\Program Files\PostgreSQL\16"
-  cd %TEMP%
-  git clone --branch v0.8.5 https://github.com/pgvector/pgvector.git
-  cd pgvector
-  nmake /F Makefile.win
-  nmake /F Makefile.win install
-  ```
-- **Run PostgreSQL with pgvector in Docker:**
-  ```
-  docker run --name herdsense-db -e POSTGRES_PASSWORD=<password> -p 5432:5432 -d pgvector/pgvector:pg16-trixie
-  ```
-
-## Setup & Run
-
-> The SQL scripts and the app are added phase by phase. Steps marked *(later phase)* work once those phases are merged.
-
-```bash
-# 1. Clone
+```bat
+:: 1. Clone and install
 git clone https://github.com/vaibh1409/DBMS-Mini-Project.git
 cd DBMS-Mini-Project
-
-# 2. Install dependencies
 npm install
 
-# 3. Configure environment
-cp .env.example .env
-# edit .env and fill in your own values
+:: 2. Start PostgreSQL 17 with pgvector (port 5433 on this computer; the repo is visible as /repo)
+docker run --name herdsense-db -e POSTGRES_PASSWORD=<admin_password> -p 5433:5432 -v "%cd%:/repo" -d pgvector/pgvector:pg17-trixie
+docker exec herdsense-db psql -U postgres -c "CREATE DATABASE herdsense;"
 
-# 4. Create the database and enable pgvector
-psql -U <admin_user> -c "CREATE DATABASE herdsense;"
-psql -U <admin_user> -d herdsense -f db/vector/setup_pgvector.sql
+:: 3. Build the database: pgvector, tables, indexes, views, vector table,
+::    triggers and procedures (before the seed data, so the triggers check it), sample data
+for %f in (db/vector/setup_pgvector.sql db/schema/01_staff.sql db/schema/02_cattle_breeding_milk.sql db/schema/03_health_vaccinations.sql db/schema/04_indexes.sql db/schema/05_views.sql db/vector/note_embeddings.sql db/logic/triggers_health_vaccinations.sql db/logic/triggers_cattle_breeding_milk.sql db/logic/procedures_health_vaccinations.sql db/logic/procedures_cattle_breeding_milk.sql db/seed/01_seed_staff.sql db/seed/02_seed_cattle_breeding_milk.sql db/seed/03_seed_health_vaccinations.sql) do docker exec herdsense-db psql -U postgres -d herdsense -v ON_ERROR_STOP=1 -q -f /repo/%f
 
-# 5. Create the tables, indexes, views and the vector table
-psql -U <admin_user> -d herdsense -f db/schema/01_staff.sql
-psql -U <admin_user> -d herdsense -f db/schema/02_cattle_breeding_milk.sql
-psql -U <admin_user> -d herdsense -f db/schema/03_health_vaccinations.sql
-psql -U <admin_user> -d herdsense -f db/schema/04_indexes.sql
-psql -U <admin_user> -d herdsense -f db/schema/05_views.sql
-psql -U <admin_user> -d herdsense -f db/vector/note_embeddings.sql
+:: 4. Create the database roles and the app's login (choose its password here)
+docker exec herdsense-db psql -U postgres -d herdsense -v ON_ERROR_STOP=1 -v app_password=<app_password> -f /repo/db/logic/roles_grants.sql
 
-# 6. Triggers, functions and procedures (before the seed data, so the triggers check it)
-psql -U <admin_user> -d herdsense -f db/logic/triggers_health_vaccinations.sql
-psql -U <admin_user> -d herdsense -f db/logic/triggers_cattle_breeding_milk.sql
-psql -U <admin_user> -d herdsense -f db/logic/procedures_health_vaccinations.sql
-psql -U <admin_user> -d herdsense -f db/logic/procedures_cattle_breeding_milk.sql
-#    Roles and grants  (later phase)
-psql -U <admin_user> -d herdsense -f db/logic/roles_grants.sql
+:: 5. Configure the app: set DB_PASSWORD to <app_password> and JWT_SECRET to 32+ random characters
+copy .env.example .env
+notepad .env
 
-# 7. Load the sample data (in this order; 01 clears all tables first)
-psql -U <admin_user> -d herdsense -f db/seed/01_seed_staff.sql
-psql -U <admin_user> -d herdsense -f db/seed/02_seed_cattle_breeding_milk.sql
-psql -U <admin_user> -d herdsense -f db/seed/03_seed_health_vaccinations.sql
-
-# 8. Generate embeddings for the vet notes
+:: 6. Generate embeddings for the vet notes
 npm run embed
 
-# 9. Start the app  (later phase)
+:: 7. Start the app, then open http://localhost:3000
 npm run dev
-# open http://localhost:3000
 ```
+
+Next time: open Docker Desktop, run `docker start herdsense-db`, then `npm run dev`.
+
+Without Docker, run the same SQL files in the same order with `psql -U <admin_user> -d herdsense -f <file>` against a PostgreSQL that has pgvector installed, and set `DB_PORT` in `.env` to that server's port.
 
 ## Demo Accounts
 
@@ -134,7 +103,9 @@ db/
   queries/    DML demonstrations and important queries
   vector/     pgvector setup, vector table, vector queries
 scripts/      Embedding generation and vector demo scripts
-src/          Next.js app (pages, API route handlers, components, lib)
+src/
+  app/        Next.js pages and API route handlers (app/api/...)
+  lib/        Database pools per role, sign-in, error handling, embeddings, vector operations
 docs/
   design/     ER diagram, relational schema, data dictionary, vector design, database choice
   screenshots/
@@ -153,7 +124,17 @@ Screenshots, test results and the final report are added to `docs/` as the proje
 
 ## Tests and Demos
 
+The SQL commands below use `psql -U <admin_user> -d herdsense -f <file>`. With Docker, run them as
+`docker exec herdsense-db psql -U postgres -d herdsense -f /repo/<file>`.
+
 ```bash
+# Database role tests: what each role is allowed and refused (rolled back)
+psql -U <admin_user> -d herdsense -f docs/tests/roles_tests.sql
+
+# API tests over HTTP (start the app first with `npm run dev` in another window)
+node docs/tests/api_tests_auth_health.js
+node docs/tests/api_tests_cattle_breeding_milk.js
+
 # Constraint tests (run inside a transaction and roll back, so no data is kept)
 psql -U <admin_user> -d herdsense -f docs/tests/ddl_tests_cattle_breeding_milk.sql
 psql -U <admin_user> -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinations.sql
@@ -196,16 +177,43 @@ Saved results are in `docs/tests/results_*.txt`.
 
 ## Role-Based Access
 
-| Role | Access |
-|------|--------|
-| Owner | Full access |
-| Vet | Health records, treatments, vaccinations |
-| Farmhand | Milk yield entry, read-only cattle view |
+| Role | Database role | Access |
+|------|---------------|--------|
+| Owner | `herdsense_owner` | Full access |
+| Vet | `herdsense_vet` | Health records, treatments, vaccinations, vet-note search; read-only cattle, breeding and milk |
+| Farmhand | `herdsense_farmhand` | Milk yield entry, read-only cattle view |
 
-Enforced both in the backend and at the database level via PostgreSQL roles and GRANTs.
+Enforced twice:
+
+1. **In the API:** every route checks the signed-in user's role and answers 403 if it is not allowed.
+2. **In the database:** the app logs in as `herdsense_app`, which can only read staff logins. Each request runs as the user's database role, whose GRANTs decide what it may read or change ([roles_grants.sql](db/logic/roles_grants.sql)). Views use `security_invoker`, and password hashes are hidden from Vets and Farmhands with column-level GRANTs.
+
+## API
+
+All routes are under `/api` and return JSON. Sign in first; the session is an HttpOnly cookie.
+
+| Method | Route | Roles | Purpose |
+|--------|-------|-------|---------|
+| POST | `/auth/login` | everyone | Sign in `{ username, password }` |
+| POST | `/auth/logout` | everyone | Sign out |
+| GET | `/auth/me` | signed in | Current user |
+| GET, POST | `/cattle` | read: all; add: Owner | List (`?status= &sex= &breed= &q=`) / add animals |
+| GET, PATCH, DELETE | `/cattle/:id` | read: all; change: Owner | One animal (parents and calves for Owner and Vet) |
+| GET | `/cattle/:id/pedigree` | Owner, Vet | Ancestors (`fn_pedigree`, recursive CTE) |
+| GET, POST | `/breeding` | read: Owner, Vet; add: Owner | Breeding records |
+| POST | `/breeding/:id/calving` | Owner | Record a birth (`sp_record_calving`) |
+| GET, POST | `/milk` | read: all; add: Owner, Farmhand | Daily totals or sessions (`?days= &cattleId= &view=`) / record a reading |
+| GET | `/milk/anomalies` | Owner, Vet | Yield drops (`fn_yield_anomalies`) |
+| GET, POST | `/health-records` | Owner, Vet | List / add an examination (its note is embedded in the same transaction) |
+| GET, PATCH, DELETE | `/health-records/:id` | Owner, Vet | One examination; editing re-embeds the note |
+| POST | `/notes/search` | Owner, Vet | Semantic, keyword or both `{ text, mode, k, condition }` |
+| GET, POST, DELETE | `/notes/:healthId/embedding` | Owner, Vet | Read, (re)create or delete one note's vector |
+| GET, POST | `/vaccinations` | read: Owner, Vet; add: Vet | History or `?dueWithin=N` (`fn_vaccinations_due`) / vaccinate (`sp_vaccinate_herd`) |
 
 ## Security Notes
 
-- No credentials are hard-coded; all configuration comes from environment variables.
-- Passwords are hashed with bcrypt.
+- No credentials are hard-coded; all configuration comes from environment variables. The app's database password is passed to `roles_grants.sql` as a psql variable, so it is never stored in the repo.
+- Staff passwords are hashed with bcrypt. Sign-in gives the same answer for an unknown user and a wrong password.
+- Sessions are JWTs signed with `JWT_SECRET`, kept in an HttpOnly cookie that expires after 8 hours.
+- All SQL uses parameters (`$1`, `$2`, ...), never string-built values.
 - `.env` is git-ignored; use `.env.example` as the template.

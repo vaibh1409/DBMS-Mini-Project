@@ -5,6 +5,9 @@
   "description": "HerdSense: Livestock Health & Breeding Record Management for Dairy Farms",
   "type": "module",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "embed": "node scripts/embed_notes.js",
     "vector": "node scripts/vector_demo.js"
   },
@@ -12,6 +15,10 @@
     "@huggingface/transformers": "^3.8.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
-    "pg": "^8.16.3"
+    "jose": "6.2.13",
+    "next": "16.4.3",
+    "pg": "^8.16.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   }
 }

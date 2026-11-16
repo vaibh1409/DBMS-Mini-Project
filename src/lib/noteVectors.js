@@ -1,8 +1,11 @@
 // Vector operations on vet-note embeddings (pgvector):
 // create/update (upsert), read, similarity search, delete,
 // plus the full-text search fallback.
+// Every function takes the pool or client to run on as its last
+// argument; it defaults to the Owner pool used by the scripts.
 import { pool, withTransaction } from './db.js';
 import { embedText, toPgVector } from './embeddings.js';
+import { HttpError } from './http.js';
 
 // ---------------------------------------------------------------------
 // CREATE / UPDATE
@@ -17,7 +20,7 @@ export async function embedHealthRecord(healthId, db = pool) {
     [healthId],
   );
   if (rows.length === 0) {
-    throw new Error(`Health record ${healthId} not found`);
+    throw new HttpError(404, `Health record ${healthId} not found`);
   }
   const note = rows[0];
   const vector = await embedText(note.vet_notes);
@@ -135,25 +138,39 @@ export async function keywordSearchNotes(text, { k = 5 } = {}, db = pool) {
 }
 
 // ---------------------------------------------------------------------
-// UPDATE: edit a vet note and/or its suspected condition, then
-// re-embed it, all in one transaction so the note and its vector
-// never disagree.
+// UPDATE: edit a health record (note text, suspected condition,
+// treatment, severity, date), then re-embed its note, all in one
+// transaction so the note and its vector never disagree.
+// Fields left undefined are not changed; null clears an optional field.
+// `db` is the pool to run on (the signed-in user's role in the API).
 // ---------------------------------------------------------------------
-export async function updateHealthNote(healthId, { vetNotes, suspectedCondition }) {
+const EDITABLE_FIELDS = {
+  vetNotes: 'vet_notes',
+  suspectedCondition: 'suspected_condition',
+  treatment: 'treatment',
+  severity: 'severity',
+  recordDate: 'record_date',
+};
+
+export async function updateHealthNote(healthId, changes, db = pool) {
   return withTransaction(async (client) => {
-    const { rowCount } = await client.query(
-      `UPDATE Health_Records
-          SET vet_notes           = COALESCE($2, vet_notes),
-              suspected_condition = CASE WHEN $3::boolean THEN $4 ELSE suspected_condition END
-        WHERE health_id = $1`,
-      [healthId, vetNotes ?? null, suspectedCondition !== undefined, suspectedCondition ?? null],
-    );
+    const values = [healthId];
+    const sets = [];
+    for (const [field, column] of Object.entries(EDITABLE_FIELDS)) {
+      if (changes[field] !== undefined) {
+        values.push(changes[field]);
+        sets.push(`${column} = $${values.length}`);
+      }
+    }
+    const { rowCount } = sets.length > 0
+      ? await client.query(`UPDATE Health_Records SET ${sets.join(', ')} WHERE health_id = $1`, values)
+      : await client.query('SELECT 1 FROM Health_Records WHERE health_id = $1', [healthId]);
     if (rowCount === 0) {
-      throw new Error(`Health record ${healthId} not found`);
+      throw new HttpError(404, `Health record ${healthId} not found`);
     }
     await embedHealthRecord(healthId, client);
     return getNoteEmbedding(healthId, client);
-  });
+  }, db);
 }
 
 // ---------------------------------------------------------------------

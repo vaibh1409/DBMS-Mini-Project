@@ -190,6 +190,20 @@ function RecordRow({ r, open, conditions, onToggle, onChanged, onDeleted, onErro
     }
   }
 
+  // A record without a vector is not found by similar-case search;
+  // this creates its vector again from the note
+  async function addToSearch() {
+    setBusy(true);
+    try {
+      await api(`/api/notes/${r.health_id}/embedding`, { method: 'POST' });
+      onChanged(`Record ${r.health_id} is back in similar-case search.`);
+    } catch (err) {
+      onError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <tr className={open ? 'is-open' : undefined}>
@@ -198,7 +212,11 @@ function RecordRow({ r, open, conditions, onToggle, onChanged, onDeleted, onErro
         <td>{r.suspected_condition ?? 'Routine check'}</td>
         <td><Badge>{r.severity}</Badge></td>
         <td>{r.vet_name}</td>
-        <td>{r.has_embedding ? 'Yes' : 'No'}</td>
+        <td>
+          {r.has_embedding ? 'Yes' : (
+            <button type="button" className="button button-small button-quiet" onClick={addToSearch} disabled={busy}>Add to search</button>
+          )}
+        </td>
         <td><button type="button" className="button button-small button-quiet" onClick={toggle} aria-expanded={open}>{open ? 'Close' : 'Open'}</button></td>
       </tr>
       {open && form && (

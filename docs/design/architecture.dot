@@ -1,0 +1,44 @@
+digraph Architecture {
+  rankdir=TB; nodesep=0.5; ranksep=0.55; pad=0.4; newrank=true;
+  graph [fontname="Helvetica", label="HerdSense System Architecture", labelloc=t, fontsize=20];
+  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11, fillcolor="#ffffff", color="#555555"];
+  edge  [fontname="Helvetica", fontsize=9.5, color="#444444"];
+
+  subgraph cluster_client {
+    label="Browser (laptop or phone)"; style="rounded,filled"; fillcolor="#eef5ee"; color="#2f6b4f"; fontname="Helvetica-Bold"; fontsize=12;
+    ui [label=<<B>Next.js pages (React)</B><BR/><FONT POINT-SIZE="10">Sign-in, Today, Cattle, Animal page, Milk yield, Breeding,<BR/>Health records, Similar cases, Vaccinations</FONT>>];
+  }
+
+  subgraph cluster_server {
+    label="Next.js server (Route Handlers, Node.js)"; labeljust=l; style="rounded,filled"; fillcolor="#f3f6fb"; color="#3a5a8c"; fontname="Helvetica-Bold"; fontsize=12;
+    api  [label=<<B>API routes under /api</B><BR/><FONT POINT-SIZE="10">auth, cattle, pedigree, breeding, calving, milk, anomalies,<BR/>health-records, notes/search, notes/:id/embedding, vaccinations</FONT>>];
+    auth [label=<<B>auth.js</B><BR/><FONT POINT-SIZE="10">bcrypt password check, JWT (HS256)<BR/>in HttpOnly cookie, requireUser(role)</FONT>>];
+    db   [label=<<B>db.js</B><BR/><FONT POINT-SIZE="10">one connection pool per role,<BR/>transactions, settings from .env</FONT>>];
+    vec  [label=<<B>noteVectors.js + embeddings.js</B><BR/><FONT POINT-SIZE="10">all-MiniLM-L6-v2 runs locally,<BR/>384-dim normalised vectors</FONT>>];
+  }
+
+  subgraph cluster_db {
+    label="PostgreSQL 17 + pgvector 0.8.7 (Docker)"; labeljust=l; style="rounded,filled"; fillcolor="#fbf6ea"; color="#9a7a20"; fontname="Helvetica-Bold"; fontsize=12;
+    roles [label=<<B>Database roles</B><BR/><FONT POINT-SIZE="10">login herdsense_app  →  SET ROLE<BR/>herdsense_owner / herdsense_vet / herdsense_farmhand<BR/>(GRANTs decide what each may do)</FONT>>];
+    rel   [label=<<B>Relational tables</B><BR/><FONT POINT-SIZE="10">Farm_Staff, Cattle, Breeding_Records,<BR/>Health_Records, Vaccinations, Milk_Yield</FONT>>];
+    logic [label=<<B>Database logic</B><BR/><FONT POINT-SIZE="10">constraints, triggers, views, indexes, full-text GIN,<BR/>fn_pedigree (recursive CTE), fn_yield_anomalies,<BR/>fn_vaccinations_due, sp_record_calving, sp_vaccinate_herd</FONT>>];
+    nemb  [label=<<B>Vector table Note_Embeddings</B><BR/><FONT POINT-SIZE="10">vector(384) + metadata, HNSW index,<BR/>cosine distance &lt;=&gt;, FK ON DELETE CASCADE</FONT>>, fillcolor="#fff1d6"];
+  }
+
+  script [label=<<B>scripts/embed_notes.js</B><BR/><FONT POINT-SIZE="10">npm run embed: embeds notes<BR/>that have no vector yet</FONT>>, fillcolor="#f4f4f4"];
+
+  ui   -> api   [label="  fetch JSON + session cookie"];
+  api  -> auth  [label=" check user and role"];
+  api  -> vec   [label=" embed / search notes"];
+  api  -> db    [label=" parameterised SQL"];
+  vec  -> db [label=" store / query vectors"];
+  auth -> db    [label=" login pool"];
+  db   -> roles [label="  connect as herdsense_app\n  with -c role=<user's role>"];
+  roles -> rel; roles -> nemb;
+  rel  -> logic [dir=both, style=dashed, arrowsize=0.6];
+  rel  -> nemb  [label=" health_id", style=dashed, arrowsize=0.6];
+  script -> vec [style=dashed];
+
+  {rank=same; auth -> db -> vec [style=invis]; rankdir=LR;}
+  {rank=same; rel; nemb;}
+}

@@ -1,0 +1,37 @@
+HerdSense API test results: sign-in, health records, vet-note vectors, vaccinations
+Run on 2026-11-16 against the seeded database
+Command: node docs/tests/api_tests_auth_health.js  (with npm run dev running)
+
+┌─────────┬───────────────────────────────────────────────────────────────────┬────────┬──────────────────────────────────────────────────────────────────────────┐
+│ (index) │ test                                                              │ result │ detail                                                                   │
+├─────────┼───────────────────────────────────────────────────────────────────┼────────┼──────────────────────────────────────────────────────────────────────────┤
+│ 0       │ 'A1 /me without signing in is refused'                            │ 'PASS' │ '401'                                                                    │
+│ 1       │ 'A2 wrong password is refused'                                    │ 'PASS' │ 'Wrong username or password'                                             │
+│ 2       │ 'A3 unknown user gets the same message as a wrong password'       │ 'PASS' │ 'Wrong username or password'                                             │
+│ 3       │ 'A4 correct login sets an HttpOnly session cookie'                │ 'PASS' │ 'Vet'                                                                    │
+│ 4       │ 'A5 /me returns the signed-in user and role'                      │ 'PASS' │ 'Dr. Kavya Menon'                                                        │
+│ 5       │ 'A6 a tampered token is refused'                                  │ 'PASS' │ '401'                                                                    │
+│ 6       │ 'A7 logout clears the cookie'                                     │ 'PASS' │ 'herdsense_session='                                                     │
+│ 7       │ 'H1 a Farmhand cannot read health records'                        │ 'PASS' │ 'This action is not available to the Farmhand role'                      │
+│ 8       │ "H2 a Vet can list one animal's health records"                   │ 'PASS' │ '2 records'                                                              │
+│ 9       │ 'H3 adding a record also stores its 384-dim embedding'            │ 'PASS' │ 'health_id 43'                                                           │
+│ 10      │ 'H4 a missing required field is refused by the API'               │ 'PASS' │ 'Missing required field(s): severity'                                    │
+│ 11      │ 'H5 an invalid severity is refused by the database (CHECK)'       │ 'PASS' │ 'new row for relation "health_records" violates check constraint "chk_h' │
+│ 12      │ 'H6 a Farmhand cannot be recorded as the vet (trigger)'           │ 'PASS' │ 'Staff 3 is a Farmhand. Only a Vet can be recorded as health_records.ve' │
+│ 13      │ 'H7 editing a record re-embeds its note and updates the metadata' │ 'PASS' │ 'Respiratory Infection'                                                  │
+│ 14      │ 'N1 keyword search finds nothing for reworded symptoms'           │ 'PASS' │ '0 rows'                                                                 │
+│ 15      │ 'N2 semantic search ranks a mastitis case first'                  │ 'PASS' │ 'Mastitis 0.659'                                                         │
+│ 16      │ 'N3 the suggested condition is Mastitis'                          │ 'PASS' │ '{"condition":"Mastitis","matches":4,"avg_similarity":0.537}'            │
+│ 17      │ 'N4 the edited note is now found by a matching search'            │ 'PASS' │ '43, 15, 16'                                                             │
+│ 18      │ 'N5 a too-short search is refused'                                │ 'PASS' │ 'text must be at least 3 characters'                                     │
+│ 19      │ 'N6 a Farmhand cannot search vet notes'                           │ 'PASS' │ 'This action is not available to the Farmhand role'                      │
+│ 20      │ "N7 read one note's embedding"                                    │ 'PASS' │ 'norm 1.0000'                                                            │
+│ 21      │ "N8 delete one note's embedding"                                  │ 'PASS' │ '200 then 404'                                                           │
+│ 22      │ 'N9 re-create the embedding'                                      │ 'PASS' │ '201'                                                                    │
+│ 23      │ 'H8 deleting a record removes it and its embedding'               │ 'PASS' │ '404, 404'                                                               │
+│ 24      │ 'V1 due-today and overdue doses (fn_vaccinations_due)'            │ 'PASS' │ '9 doses due'                                                            │
+│ 25      │ 'V2 only a Vet can record vaccinations'                           │ 'PASS' │ 'This action is not available to the Owner role'                         │
+│ 26      │ 'V3 a sold animal in the list rejects the whole call (procedure)' │ 'PASS' │ '400, 0 saved'                                                           │
+│ 27      │ 'V4 a valid call records each dose with its due date (trigger)'   │ 'PASS' │ 'next due 2027-01-15'                                                    │
+└─────────┴───────────────────────────────────────────────────────────────────┴────────┴──────────────────────────────────────────────────────────────────────────┘
+passed 28 / 28

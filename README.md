@@ -58,6 +58,8 @@ npm install
 :: 2. Start PostgreSQL 17 with pgvector (port 5433 on this computer; the repo is visible as /repo)
 docker run --name herdsense-db -e POSTGRES_PASSWORD=<admin_password> -p 5433:5432 -v "%cd%:/repo" -d pgvector/pgvector:pg17-trixie
 docker exec herdsense-db psql -U postgres -c "CREATE DATABASE herdsense;"
+:: Dates follow the farm's time zone, so "today" is the same day in the browser and the database
+docker exec herdsense-db psql -U postgres -c "ALTER DATABASE herdsense SET timezone TO 'Asia/Kolkata';"
 
 :: 3. Build the database: pgvector, tables, indexes, views, vector table,
 ::    triggers and procedures (before the seed data, so the triggers check it), sample data
@@ -139,6 +141,8 @@ docs/
 Screenshots, test results and the final report are added to `docs/` as the project progresses.
 
 ## Tests and Demos
+
+[docs/tests/README.md](docs/tests/README.md) lists every test suite, what it covers and its latest results. The web interface test cases are in [docs/tests/ui_test_cases.md](docs/tests/ui_test_cases.md).
 
 The SQL commands below use `psql -U <admin_user> -d herdsense -f <file>`. With Docker, run them as
 `docker exec herdsense-db psql -U postgres -d herdsense -f /repo/<file>`.

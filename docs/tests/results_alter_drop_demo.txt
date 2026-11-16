@@ -1,0 +1,68 @@
+Run on 17-11-2026  0:11:01.07 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+                                           Table "public.cattle"
+     Column     |         Type          | Collation | Nullable |                  Default                  
+----------------+-----------------------+-----------+----------+-------------------------------------------
+ cattle_id      | integer               |           | not null | nextval('cattle_cattle_id_seq'::regclass)
+ tag_number     | character varying(20) |           | not null | 
+ name           | character varying(50) |           |          | 
+ breed          | character varying(50) |           | not null | 
+ sex            | character(1)          |           | not null | 
+ date_of_birth  | date                  |           | not null | 
+ status         | character varying(10) |           | not null | 'Active'::character varying
+ body_weight_kg | numeric(7,2)          |           |          | 
+Indexes:
+    "cattle_pkey" PRIMARY KEY, btree (cattle_id)
+    "idx_cattle_breed" btree (breed)
+    "uq_cattle_tag" UNIQUE CONSTRAINT, btree (tag_number)
+Check constraints:
+    "chk_cattle_dob" CHECK (date_of_birth <= CURRENT_DATE)
+    "chk_cattle_sex" CHECK (sex = ANY (ARRAY['F'::bpchar, 'M'::bpchar]))
+    "chk_cattle_status" CHECK (status::text = ANY (ARRAY['Active'::character varying, 'Sold'::character varying, 'Deceased'::character varying]::text[]))
+    "chk_cattle_weight" CHECK (body_weight_kg > 0::numeric)
+Referenced by:
+    TABLE "breeding_records" CONSTRAINT "fk_breeding_calf" FOREIGN KEY (calf_id) REFERENCES cattle(cattle_id) ON DELETE RESTRICT
+    TABLE "breeding_records" CONSTRAINT "fk_breeding_dam" FOREIGN KEY (dam_id) REFERENCES cattle(cattle_id) ON DELETE RESTRICT
+    TABLE "breeding_records" CONSTRAINT "fk_breeding_sire" FOREIGN KEY (sire_id) REFERENCES cattle(cattle_id) ON DELETE RESTRICT
+    TABLE "health_records" CONSTRAINT "fk_health_cattle" FOREIGN KEY (cattle_id) REFERENCES cattle(cattle_id) ON DELETE CASCADE
+    TABLE "vaccinations" CONSTRAINT "fk_vacc_cattle" FOREIGN KEY (cattle_id) REFERENCES cattle(cattle_id) ON DELETE CASCADE
+    TABLE "milk_yield" CONSTRAINT "fk_yield_cattle" FOREIGN KEY (cattle_id) REFERENCES cattle(cattle_id) ON DELETE CASCADE
+
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE VIEW
+DROP VIEW
+DROP INDEX
+DROP TABLE
+                                          Table "public.cattle"
+    Column     |         Type          | Collation | Nullable |                  Default                  
+---------------+-----------------------+-----------+----------+-------------------------------------------
+ cattle_id     | integer               |           | not null | nextval('cattle_cattle_id_seq'::regclass)
+ tag_number    | character varying(20) |           | not null | 
+ name          | character varying(50) |           |          | 
+ breed         | character varying(50) |           | not null | 
+ sex           | character(1)          |           | not null | 
+ date_of_birth | date                  |           | not null | 
+ status        | character varying(10) |           | not null | 'Active'::character varying
+Indexes:
+    "cattle_pkey" PRIMARY KEY, btree (cattle_id)
+    "idx_cattle_breed" btree (breed)
+    "uq_cattle_tag" UNIQUE CONSTRAINT, btree (tag_number)
+Check constraints:
+    "chk_cattle_dob" CHECK (date_of_birth <= CURRENT_DATE)
+    "chk_cattle_sex" CHECK (sex = ANY (ARRAY['F'::bpchar, 'M'::bpchar]))
+    "chk_cattle_status" CHECK (status::text = ANY (ARRAY['Active'::character varying, 'Sold'::character varying, 'Deceased'::character varying]::text[]))
+Referenced by:
+    TABLE "breeding_records" CONSTRAINT "fk_breeding_calf" FOREIGN KEY (calf_id) REFERENCES cattle(cattle_id) ON DELETE RESTRICT
+    TABLE "breeding_records" CONSTRAINT "fk_breeding_dam" FOREIGN KEY (dam_id) REFERENCES cattle(cattle_id) ON DELETE RESTRICT
+    TABLE "breeding_records" CONSTRAINT "fk_breeding_sire" FOREIGN KEY (sire_id) REFERENCES cattle(cattle_id) ON DELETE RESTRICT
+    TABLE "health_records" CONSTRAINT "fk_health_cattle" FOREIGN KEY (cattle_id) REFERENCES cattle(cattle_id) ON DELETE CASCADE
+    TABLE "vaccinations" CONSTRAINT "fk_vacc_cattle" FOREIGN KEY (cattle_id) REFERENCES cattle(cattle_id) ON DELETE CASCADE
+    TABLE "milk_yield" CONSTRAINT "fk_yield_cattle" FOREIGN KEY (cattle_id) REFERENCES cattle(cattle_id) ON DELETE CASCADE
+

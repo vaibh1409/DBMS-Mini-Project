@@ -1,11 +1,11 @@
-HerdSense database role test results
-Run on 2026-11-16 against the seeded database
-Command: psql -d herdsense -f docs/tests/roles_tests.sql
-
+Run on 17-11-2026  0:10:58.68 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+BEGIN
 CREATE TABLE
 CREATE FUNCTION
-psql:docs/tests/roles_tests.sql:92: NOTICE:  1 dose(s) of LSD recorded.
-psql:docs/tests/roles_tests.sql:92: NOTICE:  Calf 48 (Test) recorded for breeding record 16.
+psql:/repo/docs/tests/roles_tests.sql:92: NOTICE:  1 dose(s) of LSD recorded.
+psql:/repo/docs/tests/roles_tests.sql:92: NOTICE:  Calf 29 (Test) recorded for breeding record 16.
+DO
  #  |        role        |                       test                        |    expected    |     actual     | result 
 ----+--------------------+---------------------------------------------------+----------------+----------------+--------
   1 | herdsense_app      | R1 read cattle without choosing a role            | denied (42501) | denied (42501) | PASS
@@ -40,3 +40,4 @@ psql:docs/tests/roles_tests.sql:92: NOTICE:  Calf 48 (Test) recorded for breedin
      25 |    25
 (1 row)
 
+ROLLBACK

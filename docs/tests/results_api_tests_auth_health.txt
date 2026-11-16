@@ -1,7 +1,5 @@
-HerdSense API test results: sign-in, health records, vet-note vectors, vaccinations
-Run on 2026-11-16 against the seeded database
-Command: node docs/tests/api_tests_auth_health.js  (with npm run dev running)
-
+Run on 17-11-2026  0:11:04.39 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
 ┌─────────┬───────────────────────────────────────────────────────────────────┬────────┬──────────────────────────────────────────────────────────────────────────┐
 │ (index) │ test                                                              │ result │ detail                                                                   │
 ├─────────┼───────────────────────────────────────────────────────────────────┼────────┼──────────────────────────────────────────────────────────────────────────┤
@@ -14,7 +12,7 @@ Command: node docs/tests/api_tests_auth_health.js  (with npm run dev running)
 │ 6       │ 'A7 logout clears the cookie'                                     │ 'PASS' │ 'herdsense_session='                                                     │
 │ 7       │ 'H1 a Farmhand cannot read health records'                        │ 'PASS' │ 'This action is not available to the Farmhand role'                      │
 │ 8       │ "H2 a Vet can list one animal's health records"                   │ 'PASS' │ '2 records'                                                              │
-│ 9       │ 'H3 adding a record also stores its 384-dim embedding'            │ 'PASS' │ 'health_id 43'                                                           │
+│ 9       │ 'H3 adding a record also stores its 384-dim embedding'            │ 'PASS' │ 'health_id 37'                                                           │
 │ 10      │ 'H4 a missing required field is refused by the API'               │ 'PASS' │ 'Missing required field(s): severity'                                    │
 │ 11      │ 'H5 an invalid severity is refused by the database (CHECK)'       │ 'PASS' │ 'new row for relation "health_records" violates check constraint "chk_h' │
 │ 12      │ 'H6 a Farmhand cannot be recorded as the vet (trigger)'           │ 'PASS' │ 'Staff 3 is a Farmhand. Only a Vet can be recorded as health_records.ve' │
@@ -22,7 +20,7 @@ Command: node docs/tests/api_tests_auth_health.js  (with npm run dev running)
 │ 14      │ 'N1 keyword search finds nothing for reworded symptoms'           │ 'PASS' │ '0 rows'                                                                 │
 │ 15      │ 'N2 semantic search ranks a mastitis case first'                  │ 'PASS' │ 'Mastitis 0.659'                                                         │
 │ 16      │ 'N3 the suggested condition is Mastitis'                          │ 'PASS' │ '{"condition":"Mastitis","matches":4,"avg_similarity":0.537}'            │
-│ 17      │ 'N4 the edited note is now found by a matching search'            │ 'PASS' │ '43, 15, 16'                                                             │
+│ 17      │ 'N4 the edited note is now found by a matching search'            │ 'PASS' │ '37, 15, 16'                                                             │
 │ 18      │ 'N5 a too-short search is refused'                                │ 'PASS' │ 'text must be at least 3 characters'                                     │
 │ 19      │ 'N6 a Farmhand cannot search vet notes'                           │ 'PASS' │ 'This action is not available to the Farmhand role'                      │
 │ 20      │ "N7 read one note's embedding"                                    │ 'PASS' │ 'norm 1.0000'                                                            │

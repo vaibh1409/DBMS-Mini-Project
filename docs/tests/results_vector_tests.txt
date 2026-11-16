@@ -1,11 +1,9 @@
-HerdSense vector database test results
-pgvector + all-MiniLM-L6-v2, run on 2026-10-28 against the seeded database
-Command: node docs/tests/vector_tests.js
-
+Run on 17-11-2026  0:11:03.11 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
 ┌─────────┬──────────────────────────────────────────────────────────────────────────┬────────┬────────────────────────────────────────┐
 │ (index) │ test                                                                     │ result │ detail                                 │
 ├─────────┼──────────────────────────────────────────────────────────────────────────┼────────┼────────────────────────────────────────┤
-│ 0       │ 'V1 pgvector extension installed'                                        │ 'PASS' │ 'version 0.6.0'                        │
+│ 0       │ 'V1 pgvector extension installed'                                        │ 'PASS' │ 'version 0.8.7'                        │
 │ 1       │ 'V2 every vet note has an embedding'                                     │ 'PASS' │ '24 of 24'                             │
 │ 2       │ 'V3 all embeddings have 384 dimensions and length 1'                     │ 'PASS' │ 'wrong dims 0, not normalised 0'       │
 │ 3       │ 'V4 keyword search finds nothing for reworded mastitis symptoms'         │ 'PASS' │ '0 rows'                               │
@@ -14,10 +12,10 @@ Command: node docs/tests/vector_tests.js
 │ 6       │ 'V7 respiratory symptoms match the respiratory case first'               │ 'PASS' │ '#15 Respiratory Infection 0.787'      │
 │ 7       │ 'V8 results are ordered by similarity, highest first'                    │ 'PASS' │ ''                                     │
 │ 8       │ 'V9 metadata filter returns only the requested condition'                │ 'PASS' │ '2 rows'                               │
-│ 9       │ 'V10 create: new note is embedded with its metadata'                     │ 'PASS' │ 'health_id 49, dims 384'               │
+│ 9       │ 'V10 create: new note is embedded with its metadata'                     │ 'PASS' │ 'health_id 36, dims 384'               │
 │ 10      │ 'V11 update: embedding changes when the note text changes'               │ 'PASS' │ 'cosine distance old vs new 0.829'     │
 │ 11      │ 'V12 update: metadata follows the health record'                         │ 'PASS' │ ''                                     │
-│ 12      │ 'V13 update: the edited note is now found by a matching search'          │ 'PASS' │ '#15, #49, #16'                        │
+│ 12      │ 'V13 update: the edited note is now found by a matching search'          │ 'PASS' │ '#15, #36, #16'                        │
 │ 13      │ 'V14 update: an invalid edit is rolled back (note and vector unchanged)' │ 'PASS' │ ''                                     │
 │ 14      │ 'V15 delete: embedding removed, health record kept'                      │ 'PASS' │ ''                                     │
 │ 15      │ 'V16 delete: deleting a missing embedding reports nothing deleted'       │ 'PASS' │ ''                                     │

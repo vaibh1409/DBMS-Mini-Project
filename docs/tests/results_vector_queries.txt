@@ -1,0 +1,100 @@
+Run on 17-11-2026  0:11:02.11 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+ embedding_id | health_id | tag_number | note_date  |  suspected_condition   | dims |  norm  
+--------------+-----------+------------+------------+------------------------+------+--------
+            1 |         1 | KA-2003    | 2026-11-14 | Mastitis               |  384 | 1.0000
+            2 |         2 | KA-2004    | 2026-06-30 | Mastitis               |  384 | 1.0000
+            3 |         3 | KA-3003    | 2025-10-03 | Mastitis               |  384 | 1.0000
+            4 |         4 | KA-2005    | 2025-03-07 | Mastitis               |  384 | 1.0000
+            5 |         5 | KA-2001    | 2026-09-23 | Foot Rot               |  384 | 1.0000
+            6 |         6 | KA-3001    | 2026-04-01 | Lameness               |  384 | 1.0000
+            7 |         7 | KA-3002    | 2024-12-17 | Lameness               |  384 | 1.0000
+            8 |         8 | KA-2001    | 2026-11-12 | Foot Rot               |  384 | 1.0000
+            9 |         9 | KA-2004    | 2026-01-01 | Milk Fever             |  384 | 1.0000
+           10 |        10 | KA-1005    | 2024-05-31 | Milk Fever             |  384 | 1.0000
+           11 |        11 | KA-3003    | 2025-11-02 | Ketosis                |  384 | 1.0000
+           12 |        12 | KA-2003    | 2025-05-06 | Ketosis                |  384 | 1.0000
+           13 |        13 | KA-2005    | 2026-08-14 | Bloat                  |  384 | 1.0000
+           14 |        14 | KA-4002    | 2025-07-25 | Bloat                  |  384 | 1.0000
+           15 |        15 | KA-4001    | 2026-10-08 | Respiratory Infection  |  384 | 1.0000
+           16 |        16 | KA-4003    | 2026-05-21 | Pneumonia              |  384 | 1.0000
+           17 |        17 | KA-4004    | 2026-01-21 | Calf Scours            |  384 | 1.0000
+           18 |        18 | KA-4003    | 2024-12-17 | Calf Scours            |  384 | 1.0000
+           19 |        19 | KA-3002    | 2026-06-20 | Tick Fever             |  384 | 1.0000
+           20 |        20 | KA-3001    | 2025-11-17 | Tick Fever             |  384 | 1.0000
+           21 |        21 | KA-3001    | 2025-01-10 | Retained Placenta      |  384 | 1.0000
+           22 |        22 | KA-1007    | 2026-03-02 | Foot and Mouth Disease |  384 | 1.0000
+           23 |        23 | KA-1004    | 2026-10-18 |                        |  384 | 1.0000
+           24 |        24 | KA-2004    | 2026-11-07 |                        |  384 | 1.0000
+(24 rows)
+
+ health_id | tag_number | suspected_condition | similarity |                          vet_notes                           
+-----------+------------+---------------------+------------+--------------------------------------------------------------
+         2 | KA-2004    | Mastitis            |      0.626 | Strip cup test shows clots in the front right quarter. Quart
+        13 | KA-2005    | Bloat               |      0.604 | Left side of the abdomen distended like a drum after grazing
+        18 | KA-4003    | Calf Scours         |      0.584 | Loose pasty dung and slight dehydration, still drinking milk
+         3 | KA-3003    | Mastitis            |      0.541 | Udder badly swollen and discoloured with foul smelling blood
+        16 | KA-4003    | Pneumonia           |      0.441 | Calf breathing with an open mouth, crackling lung sounds, hi
+(5 rows)
+
+ health_id | note_date  |  suspected_condition   | similarity 
+-----------+------------+------------------------+------------
+         2 | 2026-06-30 | Mastitis               |      0.626
+        13 | 2026-08-14 | Bloat                  |      0.604
+        16 | 2026-05-21 | Pneumonia              |      0.441
+        17 | 2026-01-21 | Calf Scours            |      0.417
+        22 | 2026-03-02 | Foot and Mouth Disease |      0.372
+(5 rows)
+
+ suspected_condition | matches | avg_similarity 
+---------------------+---------+----------------
+ Mastitis            |       2 |          0.584
+ Bloat               |       1 |          0.604
+ Calf Scours         |       1 |          0.584
+ Pneumonia           |       1 |          0.441
+(4 rows)
+
+BEGIN
+UPDATE 1
+ health_id | record_condition | embedding_condition 
+-----------+------------------+---------------------
+        24 | Mastitis         | Mastitis
+(1 row)
+
+UPDATE 1
+ similarity_note_24_to_note_1 
+------------------------------
+                        1.000
+(1 row)
+
+UPDATE 1
+ embeddings_for_note_24 
+------------------------
+                      0
+(1 row)
+
+DELETE 1
+ record_left | embedding_left 
+-------------+----------------
+           1 |              0
+(1 row)
+
+DELETE 1
+ embeddings_for_note_22 
+------------------------
+                      0
+(1 row)
+
+ROLLBACK
+SET
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=40.37..44.57 rows=5 width=12)
+   InitPlan 1
+     ->  Index Scan using uq_embedding_health on note_embeddings note_embeddings_1  (cost=0.14..8.15 rows=1 width=1544)
+           Index Cond: (health_id = 1)
+   ->  Index Scan using idx_note_embeddings_hnsw on note_embeddings  (cost=32.22..56.58 rows=29 width=12)
+         Order By: (embedding <=> (InitPlan 1).col1)
+(6 rows)
+
+RESET

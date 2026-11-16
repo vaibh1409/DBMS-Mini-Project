@@ -1,7 +1,12 @@
-HerdSense DDL constraint test results: staff_health_vaccinations
-PostgreSQL 16, run on 2026-10-28 against the seeded database
-Command: psql -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinations.sql
-
+Run on 17-11-2026  0:10:56.75 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+BEGIN
+CREATE TABLE
+CREATE FUNCTION
+CREATE FUNCTION
+INSERT 0 2
+INSERT 0 2
+DO
  #  |                                    test                                    |     expected     |      actual      | result 
 ----+----------------------------------------------------------------------------+------------------+------------------+--------
   1 | S1 duplicate username                                                      | rejected (23505) | rejected (23505) | PASS
@@ -30,3 +35,4 @@ Command: psql -d herdsense -f docs/tests/ddl_tests_staff_health_vaccinations.sql
      19 |    19
 (1 row)
 
+ROLLBACK

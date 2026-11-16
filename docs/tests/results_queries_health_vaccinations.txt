@@ -1,8 +1,5 @@
-HerdSense query results: health_vaccinations
-PostgreSQL 16 with the sample data, run on 2026-10-28. Dates in the sample data are relative to the run date.
-Commands: psql -d herdsense -f db/queries/dml_health_vaccinations.sql   and   psql -d herdsense -f db/queries/queries_health_vaccinations.sql
-
-########## DML (rolled back) ##########
+Run on 17-11-2026  0:10:59.63 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
 BEGIN;
 BEGIN
 INSERT INTO Health_Records (cattle_id, vet_id, record_date, vet_notes, suspected_condition, treatment, severity)
@@ -12,7 +9,7 @@ VALUES (14, 2, CURRENT_DATE,
 RETURNING health_id, cattle_id, record_date, suspected_condition;
  health_id | cattle_id | record_date | suspected_condition 
 -----------+-----------+-------------+---------------------
-        36 |        14 | 2026-10-28  | Lameness
+        35 |        14 | 2026-11-17  | Lameness
 (1 row)
 
 INSERT 0 1
@@ -28,11 +25,11 @@ WHERE administered_date = CURRENT_DATE
 ORDER BY cattle_id;
  cattle_id | vaccine_name | administered_date 
 -----------+--------------+-------------------
-         4 | FMD          | 2026-10-28
-         5 | FMD          | 2026-10-28
-         8 | FMD          | 2026-10-28
-        11 | FMD          | 2026-10-28
-        12 | FMD          | 2026-10-28
+         4 | FMD          | 2026-11-17
+         5 | FMD          | 2026-11-17
+         8 | FMD          | 2026-11-17
+        11 | FMD          | 2026-11-17
+        12 | FMD          | 2026-11-17
 (5 rows)
 
 UPDATE Health_Records
@@ -96,8 +93,6 @@ SELECT (SELECT count(*) FROM Health_Records) AS health_records,
              24 |           26 | Moderate
 (1 row)
 
-
-########## QUERIES ##########
 SELECT h.record_date,
        c.tag_number,
        c.name                AS animal,
@@ -111,12 +106,12 @@ WHERE h.record_date >= CURRENT_DATE - 90
 ORDER BY h.record_date DESC;
  record_date | tag_number | animal  |       vet        |  suspected_condition  | severity 
 -------------+------------+---------+------------------+-----------------------+----------
- 2026-10-25  | KA-2003    | Lakshmi | Dr. Kavya Menon  | Mastitis              | Moderate
- 2026-10-23  | KA-2001    | Gauri   | Dr. Arjun Shetty | Foot Rot              | Mild
- 2026-10-18  | KA-2004    | Sundari | Dr. Kavya Menon  |                       | Mild
- 2026-09-28  | KA-1004    | Arjuna  | Dr. Arjun Shetty |                       | Mild
- 2026-09-18  | KA-4001    | Tulsi   | Dr. Arjun Shetty | Respiratory Infection | Moderate
- 2026-09-03  | KA-2001    | Gauri   | Dr. Kavya Menon  | Foot Rot              | Moderate
+ 2026-11-14  | KA-2003    | Lakshmi | Dr. Kavya Menon  | Mastitis              | Moderate
+ 2026-11-12  | KA-2001    | Gauri   | Dr. Arjun Shetty | Foot Rot              | Mild
+ 2026-11-07  | KA-2004    | Sundari | Dr. Kavya Menon  |                       | Mild
+ 2026-10-18  | KA-1004    | Arjuna  | Dr. Arjun Shetty |                       | Mild
+ 2026-10-08  | KA-4001    | Tulsi   | Dr. Arjun Shetty | Respiratory Infection | Moderate
+ 2026-09-23  | KA-2001    | Gauri   | Dr. Kavya Menon  | Foot Rot              | Moderate
 (6 rows)
 
 SELECT h.suspected_condition       AS condition,
@@ -131,14 +126,14 @@ HAVING count(*) >= 2
 ORDER BY cases DESC, condition;
   condition  | cases | animals | first_seen | last_seen  
 -------------+-------+---------+------------+------------
- Mastitis    |     4 |       4 | 2025-02-15 | 2026-10-25
- Bloat       |     2 |       2 | 2025-07-05 | 2026-07-25
- Calf Scours |     2 |       2 | 2024-11-27 | 2026-01-01
- Foot Rot    |     2 |       1 | 2026-09-03 | 2026-10-23
- Ketosis     |     2 |       2 | 2025-04-16 | 2025-10-13
- Lameness    |     2 |       2 | 2024-11-27 | 2026-03-12
- Milk Fever  |     2 |       2 | 2024-05-11 | 2025-12-12
- Tick Fever  |     2 |       2 | 2025-10-28 | 2026-05-31
+ Mastitis    |     4 |       4 | 2025-03-07 | 2026-11-14
+ Bloat       |     2 |       2 | 2025-07-25 | 2026-08-14
+ Calf Scours |     2 |       2 | 2024-12-17 | 2026-01-21
+ Foot Rot    |     2 |       1 | 2026-09-23 | 2026-11-12
+ Ketosis     |     2 |       2 | 2025-05-06 | 2025-11-02
+ Lameness    |     2 |       2 | 2024-12-17 | 2026-04-01
+ Milk Fever  |     2 |       2 | 2024-05-31 | 2026-01-01
+ Tick Fever  |     2 |       2 | 2025-11-17 | 2026-06-20
 (8 rows)
 
 SELECT s.full_name                                       AS vet,
@@ -174,13 +169,13 @@ ORDER BY c.cattle_id;
  KA-4002    | Kalyani   | 2023-10-05
  KA-4003    | Pooja     | 2024-04-14
  KA-4004    | Ganesha   | 2025-01-09
- KA-5001    | Shanti    | 2026-01-20
- KA-5002    | Nandini   | 2025-12-05
- KA-5003    | Hanuma    | 2025-12-11
- KA-5004    | Kirti     | 2025-09-13
- KA-5005    | Gowri     | 2026-09-10
- KA-5006    | Varsha    | 2025-09-22
- KA-5007    | Tara      | 2024-05-10
+ KA-5001    | Shanti    | 2026-02-09
+ KA-5002    | Nandini   | 2025-12-25
+ KA-5003    | Hanuma    | 2025-12-31
+ KA-5004    | Kirti     | 2025-10-03
+ KA-5005    | Gowri     | 2026-09-30
+ KA-5006    | Varsha    | 2025-10-12
+ KA-5007    | Tara      | 2024-05-30
 (17 rows)
 
 SELECT c.name,
@@ -195,20 +190,20 @@ WHERE h.record_date = (SELECT max(h2.record_date)
 ORDER BY h.record_date DESC;
    name    | record_date |  suspected_condition   | severity 
 -----------+-------------+------------------------+----------
- Lakshmi   | 2026-10-25  | Mastitis               | Moderate
- Gauri     | 2026-10-23  | Foot Rot               | Mild
- Sundari   | 2026-10-18  |                        | Mild
- Arjuna    | 2026-09-28  |                        | Mild
- Tulsi     | 2026-09-18  | Respiratory Infection  | Moderate
- Kamadhenu | 2026-07-25  | Bloat                  | Severe
- Meena     | 2026-05-31  | Tick Fever             | Severe
- Pooja     | 2026-05-01  | Pneumonia              | Severe
- Radha     | 2026-03-12  | Lameness               | Mild
- Veera     | 2026-02-10  | Foot and Mouth Disease | Severe
- Ganesha   | 2026-01-01  | Calf Scours            | Moderate
- Chandra   | 2025-10-13  | Ketosis                | Moderate
- Kalyani   | 2025-07-05  | Bloat                  | Mild
- Tunga     | 2024-05-11  | Milk Fever             | Severe
+ Lakshmi   | 2026-11-14  | Mastitis               | Moderate
+ Gauri     | 2026-11-12  | Foot Rot               | Mild
+ Sundari   | 2026-11-07  |                        | Mild
+ Arjuna    | 2026-10-18  |                        | Mild
+ Tulsi     | 2026-10-08  | Respiratory Infection  | Moderate
+ Kamadhenu | 2026-08-14  | Bloat                  | Severe
+ Meena     | 2026-06-20  | Tick Fever             | Severe
+ Pooja     | 2026-05-21  | Pneumonia              | Severe
+ Radha     | 2026-04-01  | Lameness               | Mild
+ Veera     | 2026-03-02  | Foot and Mouth Disease | Severe
+ Ganesha   | 2026-01-21  | Calf Scours            | Moderate
+ Chandra   | 2025-11-02  | Ketosis                | Moderate
+ Kalyani   | 2025-07-25  | Bloat                  | Mild
+ Tunga     | 2024-05-31  | Milk Fever             | Severe
 (14 rows)
 
 SELECT c.name,
@@ -228,15 +223,15 @@ WHERE c.status = 'Active'
 ORDER BY days_overdue DESC, c.name;
    name    | vaccine_name | last_dose  |  due_date  | days_overdue 
 -----------+--------------+------------+------------+--------------
- Kalyani   | BQ           | 2025-09-23 | 2026-09-23 |           35
- Tulsi     | BQ           | 2025-09-23 | 2026-09-23 |           35
- Arjuna    | FMD          | 2026-04-11 | 2026-10-08 |           20
- Gauri     | FMD          | 2026-04-11 | 2026-10-08 |           20
- Kamadhenu | FMD          | 2026-04-11 | 2026-10-08 |           20
- Sundari   | FMD          | 2026-04-11 | 2026-10-08 |           20
- Tunga     | FMD          | 2026-04-11 | 2026-10-08 |           20
- Meena     | HS           | 2025-10-28 | 2026-10-28 |            0
- Radha     | HS           | 2025-10-28 | 2026-10-28 |            0
+ Kalyani   | BQ           | 2025-10-13 | 2026-10-13 |           35
+ Tulsi     | BQ           | 2025-10-13 | 2026-10-13 |           35
+ Arjuna    | FMD          | 2026-05-01 | 2026-10-28 |           20
+ Gauri     | FMD          | 2026-05-01 | 2026-10-28 |           20
+ Kamadhenu | FMD          | 2026-05-01 | 2026-10-28 |           20
+ Sundari   | FMD          | 2026-05-01 | 2026-10-28 |           20
+ Tunga     | FMD          | 2026-05-01 | 2026-10-28 |           20
+ Meena     | HS           | 2025-11-17 | 2026-11-17 |            0
+ Radha     | HS           | 2025-11-17 | 2026-11-17 |            0
 (9 rows)
 
 SELECT c.name,
@@ -250,7 +245,7 @@ GROUP BY c.cattle_id, c.name, h.suspected_condition
 HAVING count(*) >= 2;
  name  | condition | times_recorded |         dates          
 -------+-----------+----------------+------------------------
- Gauri | Foot Rot  |              2 | 2026-09-03, 2026-10-23
+ Gauri | Foot Rot  |              2 | 2026-09-23, 2026-11-12
 (1 row)
 
 SELECT c.name,
@@ -269,8 +264,8 @@ WHERE h.record_date >= CURRENT_DATE - 7
 ORDER BY h.record_date DESC;
   name   | record_date | suspected_condition | litres_before | litres_after 
 ---------+-------------+---------------------+---------------+--------------
- Lakshmi | 2026-10-25  | Mastitis            |         11.80 |         6.38
- Gauri   | 2026-10-23  | Foot Rot            |          9.20 |         9.00
+ Lakshmi | 2026-11-14  | Mastitis            |         11.80 |         6.38
+ Gauri   | 2026-11-12  | Foot Rot            |          9.20 |         9.00
 (2 rows)
 
 SELECT h.record_date       AS event_date, 'Health'      AS event_type,
@@ -285,14 +280,14 @@ FROM Breeding_Records b WHERE b.dam_id = 11
 ORDER BY event_date DESC;
  event_date | event_type  |      detail      
 ------------+-------------+------------------
- 2026-10-18 | Health      | Routine check
- 2026-06-10 | Health      | Mastitis
- 2026-04-11 | Vaccination | FMD
- 2026-04-11 | Breeding    | AI - Failed
- 2026-01-01 | Vaccination | HS
- 2025-12-12 | Health      | Milk Fever
- 2025-10-13 | Vaccination | FMD
- 2025-03-03 | Breeding    | Natural - Calved
+ 2026-11-07 | Health      | Routine check
+ 2026-06-30 | Health      | Mastitis
+ 2026-05-01 | Vaccination | FMD
+ 2026-05-01 | Breeding    | AI - Failed
+ 2026-01-21 | Vaccination | HS
+ 2026-01-01 | Health      | Milk Fever
+ 2025-11-02 | Vaccination | FMD
+ 2025-03-23 | Breeding    | Natural - Calved
  2020-06-18 | Breeding    | AI - Calved
 (9 rows)
 

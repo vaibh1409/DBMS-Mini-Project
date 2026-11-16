@@ -1,11 +1,11 @@
-HerdSense trigger, function and procedure test results: health_vaccinations
-PostgreSQL 16 with the sample data, run on 2026-10-28
-Command: psql -d herdsense -f docs/tests/logic_tests_health_vaccinations.sql
-
+Run on 17-11-2026  0:10:57.73 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+BEGIN
 CREATE TABLE
 CREATE FUNCTION
 CREATE FUNCTION
-psql:/root/DBMS-Mini-Project/docs/tests/logic_tests_health_vaccinations.sql:109: NOTICE:  3 dose(s) of LSD recorded.
+psql:/repo/docs/tests/logic_tests_health_vaccinations.sql:109: NOTICE:  3 dose(s) of LSD recorded.
+DO
  #  |                               test                                |     expected     |      actual      | result 
 ----+-------------------------------------------------------------------+------------------+------------------+--------
   1 | T1 trigger: every seeded dose has a due date                      | true             | true             | PASS
@@ -32,3 +32,4 @@ psql:/root/DBMS-Mini-Project/docs/tests/logic_tests_health_vaccinations.sql:109:
      17 |    17
 (1 row)
 
+ROLLBACK

@@ -1,11 +1,11 @@
-HerdSense trigger, function and procedure test results: cattle_breeding_milk
-PostgreSQL 16 with the sample data, run on 2026-10-28
-Command: psql -d herdsense -f docs/tests/logic_tests_cattle_breeding_milk.sql
-
+Run on 17-11-2026  0:14:48.80 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+BEGIN
 CREATE TABLE
 CREATE FUNCTION
 CREATE FUNCTION
-psql:docs/tests/logic_tests_cattle_breeding_milk.sql:103: NOTICE:  Calf 36 (Ganga II) recorded for breeding record 16.
+psql:/repo/docs/tests/logic_tests_cattle_breeding_milk.sql:103: NOTICE:  Calf 33 (Ganga II) recorded for breeding record 16.
+DO
  #  |                                test                                 |     expected     |      actual      | result 
 ----+---------------------------------------------------------------------+------------------+------------------+--------
   1 | T1 trigger: a bull cannot be recorded as the dam                    | rejected (23514) | rejected (23514) | PASS
@@ -33,3 +33,4 @@ psql:docs/tests/logic_tests_cattle_breeding_milk.sql:103: NOTICE:  Calf 36 (Gang
      18 |    18
 (1 row)
 
+ROLLBACK

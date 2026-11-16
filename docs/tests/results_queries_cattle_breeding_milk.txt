@@ -1,8 +1,5 @@
-HerdSense query results: cattle_breeding_milk
-PostgreSQL 16 with the sample data, run on 2026-10-28. Dates in the sample data are relative to the run date.
-Commands: psql -d herdsense -f db/queries/dml_cattle_breeding_milk.sql   and   psql -d herdsense -f db/queries/queries_cattle_breeding_milk.sql
-
-########## DML (rolled back) ##########
+Run on 17-11-2026  0:14:49.40 
+PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
 BEGIN;
 BEGIN
 WITH new_calf AS (
@@ -34,8 +31,8 @@ WHERE cattle_id = 14 AND yield_date = CURRENT_DATE
 ORDER BY session DESC;
  cattle_id | yield_date | session | litres 
 -----------+------------+---------+--------
-        14 | 2026-10-28 | Morning |   6.20
-        14 | 2026-10-28 | Evening |   5.10
+        14 | 2026-11-17 | Morning |   6.20
+        14 | 2026-11-17 | Evening |   5.10
 (2 rows)
 
 UPDATE Milk_Yield
@@ -60,7 +57,7 @@ ORDER BY breeding_id;
  breeding_id | dam_id | breeding_date | outcome 
 -------------+--------+---------------+---------
           16 |     15 | 2026-07-02    | Calved
-          17 |     14 | 2025-12-12    | Failed
+          17 |     14 | 2026-01-01    | Failed
 (2 rows)
 
 DELETE FROM Breeding_Records WHERE breeding_id = 15 RETURNING breeding_id, dam_id, outcome;
@@ -93,8 +90,6 @@ SELECT (SELECT count(*) FROM Cattle)           AS cattle,
      27 |               24 | Pending
 (1 row)
 
-
-########## QUERIES ##########
 SELECT b.breeding_id,
        b.breeding_date,
        b.method,
@@ -121,14 +116,14 @@ ORDER BY calf.date_of_birth;
           10 | 2022-05-13    | AI      | Radha     | Arjuna | Tulsi     | 2023-02-20
           11 | 2022-12-26    | AI      | Meena     | Shiva  | Kalyani   | 2023-10-05
           12 | 2023-07-06    | AI      | Chandra   | Arjuna | Pooja     | 2024-04-14
-          24 | 2023-08-01    | AI      | Tunga     | Arjuna | Tara      | 2024-05-10
+          24 | 2023-08-21    | AI      | Tunga     | Arjuna | Tara      | 2024-05-30
           13 | 2024-04-01    | Natural | Radha     | Arjuna | Ganesha   | 2025-01-09
-          21 | 2024-12-04    | AI      | Kamadhenu | Arjuna | Kirti     | 2025-09-13
-          23 | 2024-12-13    | Natural | Chandra   | Veera  | Varsha    | 2025-09-22
-          19 | 2025-02-25    | AI      | Lakshmi   | Shiva  | Nandini   | 2025-12-05
-          20 | 2025-03-03    | Natural | Sundari   | Veera  | Hanuma    | 2025-12-11
-          18 | 2025-04-12    | AI      | Gauri     | Arjuna | Shanti    | 2026-01-20
-          22 | 2025-12-01    | AI      | Radha     | Shiva  | Gowri     | 2026-09-10
+          21 | 2024-12-24    | AI      | Kamadhenu | Arjuna | Kirti     | 2025-10-03
+          23 | 2025-01-02    | Natural | Chandra   | Veera  | Varsha    | 2025-10-12
+          19 | 2025-03-17    | AI      | Lakshmi   | Shiva  | Nandini   | 2025-12-25
+          20 | 2025-03-23    | Natural | Sundari   | Veera  | Hanuma    | 2025-12-31
+          18 | 2025-05-02    | AI      | Gauri     | Arjuna | Shanti    | 2026-02-09
+          22 | 2025-12-21    | AI      | Radha     | Shiva  | Gowri     | 2026-09-30
 (20 rows)
 
 SELECT c.tag_number,
@@ -394,11 +389,11 @@ WHERE c.status = 'Active'
 ORDER BY days_since_calving DESC;
    name    | last_calving_date | days_since_calving |    breeding_status     
 -----------+-------------------+--------------------+------------------------
- Kamadhenu | 2025-09-13        |                410 | ready to breed
- Chandra   | 2025-09-22        |                401 | already bred (pending)
- Lakshmi   | 2025-12-05        |                327 | ready to breed
- Sundari   | 2025-12-11        |                321 | ready to breed
- Gauri     | 2026-01-20        |                281 | ready to breed
- Radha     | 2026-09-10        |                 48 | too soon after calving
+ Kamadhenu | 2025-10-03        |                410 | ready to breed
+ Chandra   | 2025-10-12        |                401 | already bred (pending)
+ Lakshmi   | 2025-12-25        |                327 | ready to breed
+ Sundari   | 2025-12-31        |                321 | ready to breed
+ Gauri     | 2026-02-09        |                281 | ready to breed
+ Radha     | 2026-09-30        |                 48 | too soon after calving
 (6 rows)
 

@@ -9,7 +9,7 @@ DBMS Experiential Learning – Level 3 Project (PES University, Aug–Dec 2026)
 HerdSense helps dairy farms manage cattle health, vaccination, breeding, and milk-yield records. Beyond basic record keeping, it:
 
 - traces cattle pedigrees with recursive SQL queries,
-- tracks vaccination due dates with triggers and flags unusual milk yield with a stored procedure,
+- tracks vaccination due dates with a trigger and flags unusual milk yield with a stored function,
 - uses **semantic (vector) search** over vet notes to find similar past cases and likely conditions.
 
 ## Team
@@ -132,13 +132,14 @@ docs/
 
 ## Documentation
 
+- [Project report](docs/HerdSense_Report.md): objectives, requirements, design, implementation, queries, architecture, screenshots, testing and conclusion
 - [ER diagram](docs/design/er_diagram.png)
 - [Relational schema](docs/design/relational_schema.md)
 - [Data dictionary](docs/design/data_dictionary.md)
 - [Vector database design](docs/design/vector_design.md)
 - [Database choice and justification](docs/design/database_choice.md)
-
-Screenshots, test results and the final report are added to `docs/` as the project progresses.
+- [Screenshots](docs/screenshots/)
+- [Testing](docs/tests/README.md)
 
 ## Tests and Demos
 

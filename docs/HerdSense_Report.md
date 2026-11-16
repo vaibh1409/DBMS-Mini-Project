@@ -17,6 +17,12 @@ Repository: https://github.com/vaibh1409/DBMS-Mini-Project
 4. Relational schema
 5. Database choice and justification
 6. Data dictionary
+7. SQL and vector database implementation
+8. Important queries
+9. System architecture
+10. Application screenshots
+11. Testing results
+12. Conclusion
 
 ---
 
@@ -272,3 +278,408 @@ Vector store (pgvector). One 384-dimension embedding per vet note, plus the meta
 | embedding | vector(384) | - | No | - | all-MiniLM-L6-v2 embedding of vet_notes |
 
 The same tables with their constraints and descriptions are kept in `docs/design/data_dictionary.md`.
+
+## 7. SQL and Vector Database Implementation
+
+All SQL is in the `db/` folder and is run in this order (see the README): pgvector extension, tables, indexes, views, vector table, triggers, functions and procedures, sample data, then roles and GRANTs.
+
+| Folder / file | Contents |
+|---|---|
+| `db/schema/01_staff.sql`, `02_cattle_breeding_milk.sql`, `03_health_vaccinations.sql` | CREATE TABLE with primary keys, foreign keys and constraints |
+| `db/schema/04_indexes.sql` | B-tree indexes for frequent lookups and a GIN full-text index |
+| `db/schema/05_views.sql` | Three views |
+| `db/schema/alter_drop_demo.sql` | ALTER TABLE and DROP demonstration |
+| `db/vector/setup_pgvector.sql`, `note_embeddings.sql` | pgvector extension, vector table and its indexes |
+| `db/vector/vector_queries.sql` | Vector read, search, update and delete in SQL |
+| `db/logic/triggers_*.sql`, `procedures_*.sql` | Triggers, functions and procedures |
+| `db/logic/roles_grants.sql` | Database roles and GRANTs |
+| `db/seed/*.sql` | Sample data |
+| `db/queries/dml_*.sql`, `queries_*.sql` | DML demonstrations and important queries |
+
+### 7.1 DDL
+
+**CREATE.** Seven tables with named primary key, foreign key, UNIQUE and CHECK constraints, for example:
+
+```sql
+CREATE TABLE Breeding_Records (
+    breeding_id    SERIAL       PRIMARY KEY,
+    dam_id         INT          NOT NULL,
+    sire_id        INT          NOT NULL,
+    breeding_date  DATE         NOT NULL,
+    method         VARCHAR(10)  NOT NULL,
+    outcome        VARCHAR(10)  NOT NULL DEFAULT 'Pending',
+    calf_id        INT,
+    recorded_by    INT          NOT NULL,
+
+    CONSTRAINT fk_breeding_dam   FOREIGN KEY (dam_id)
+        REFERENCES Cattle (cattle_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_breeding_sire  FOREIGN KEY (sire_id)
+        REFERENCES Cattle (cattle_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_breeding_calf  FOREIGN KEY (calf_id)
+        REFERENCES Cattle (cattle_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_breeding_staff FOREIGN KEY (recorded_by)
+        REFERENCES Farm_Staff (staff_id) ON DELETE RESTRICT,
+
+    CONSTRAINT uq_breeding_calf       UNIQUE (calf_id),
+    CONSTRAINT chk_breeding_date      CHECK (breeding_date <= CURRENT_DATE),
+    CONSTRAINT chk_breeding_method    CHECK (method IN ('Natural', 'AI')),
+    CONSTRAINT chk_breeding_outcome   CHECK (outcome IN ('Pending', 'Calved', 'Failed')),
+    CONSTRAINT chk_breeding_parents   CHECK (dam_id <> sire_id),
+    CONSTRAINT chk_breeding_calf_self CHECK (calf_id IS NULL
+                                             OR (calf_id <> dam_id AND calf_id <> sire_id)),
+    CONSTRAINT chk_breeding_calved    CHECK ((outcome = 'Calved') = (calf_id IS NOT NULL))
+);
+```
+
+**ALTER and DROP.** `alter_drop_demo.sql` adds a column to `Cattle`, changes its type, adds and drops a CHECK constraint, renames and drops the column, then creates and drops a table, an index and a view. It runs in a transaction, so the schema is unchanged afterwards (output in `docs/tests/results_alter_drop_demo.txt`).
+
+**Indexes** (`04_indexes.sql`), besides those created by PRIMARY KEY and UNIQUE:
+
+| Index | On | Used by |
+|---|---|---|
+| `idx_health_cattle_date` | `Health_Records (cattle_id, record_date DESC)` | An animal's health history, newest first |
+| `idx_health_notes_fts` | GIN on `to_tsvector('english', vet_notes)` | Full-text search of vet notes |
+| `idx_vacc_next_due` | `Vaccinations (next_due_date)` | Vaccinations due |
+| `idx_vacc_cattle_name` | `Vaccinations (cattle_id, vaccine_name, administered_date DESC)` | Latest dose of each vaccine |
+| `idx_breeding_dam`, `idx_breeding_sire` | `Breeding_Records (dam_id)`, `(sire_id)` | Pedigree and offspring queries |
+| `idx_cattle_breed` | `Cattle (breed)` | Filtering the herd by breed |
+| `idx_note_embeddings_hnsw` | HNSW on `embedding vector_cosine_ops` | Vector similarity search |
+| `idx_note_embeddings_condition`, `idx_note_embeddings_cattle` | Vector metadata | Filtered vector search |
+
+**Views** (`05_views.sql`): `v_vaccinations_due` (latest dose of each vaccine that is due or overdue), `v_cattle_health_summary` (each animal with its number of examinations and latest condition) and `v_daily_milk_totals` (morning and evening litres added up per cow per day). All three use `security_invoker`, so they respect the rights of the user who queries them.
+
+### 7.2 Triggers
+
+| Trigger | Table, timing | What it does |
+|---|---|---|
+| `trg_vaccination_due_date` | Vaccinations, BEFORE INSERT/UPDATE | Sets `next_due_date = administered_date + interval_days`, so the due date can never be typed wrong |
+| `trg_health_requires_vet`, `trg_vaccination_requires_vet` | Health_Records, Vaccinations, BEFORE INSERT/UPDATE | One trigger function (the column name is passed as an argument) refuses a staff member who is not a Vet |
+| `trg_health_embedding_sync` | Health_Records, AFTER UPDATE | Keeps the vector table consistent: if the note text changed, deletes the old vector (the app re-embeds it); otherwise copies changed metadata to `Note_Embeddings` |
+| `trg_breeding_check` | Breeding_Records, BEFORE INSERT/UPDATE | Dam must be female, sire male, and a calf must be born after the breeding date |
+| `trg_milk_yield_check` | Milk_Yield, BEFORE INSERT/UPDATE | Milk can only be recorded for an active female |
+
+Validation triggers raise SQLSTATE 23514 (the same code as a CHECK constraint), so the API reports them the same way.
+
+### 7.3 Functions, procedures and transactions
+
+| Name | Kind | What it does |
+|---|---|---|
+| `fn_pedigree(animal, generations)` | SQL function, recursive CTE | Ancestors of an animal generation by generation, with dam/sire and the path (`Tulsi <- Arjuna <- Veera`) |
+| `fn_yield_anomalies(recent_days, drop_pct)` | SQL function, CTEs, FILTER, LATERAL join | Cows whose average daily milk over the last 3 days is more than 20% below their own average over the rest of the last 30 days, with their latest examination |
+| `fn_vaccinations_due(within_days)` | SQL function, DISTINCT ON | Latest dose of each vaccine per active animal that is overdue, due today or due within N days |
+| `sp_record_calving(...)` | PL/pgSQL procedure | Locks the breeding record (`SELECT ... FOR UPDATE`), checks it is pending, inserts the calf and marks the breeding as calved. Any failure (duplicate tag, calf born before the breeding) rolls back both changes |
+| `sp_vaccinate_herd(...)` | PL/pgSQL procedure | Gives one vaccine to a list of animals; if any animal does not exist or is not active, or the staff member is not a Vet, no dose is saved |
+
+Transactions are also used in the application: adding or editing a health record and storing its vector happen in one transaction (`withTransaction` in `src/lib/db.js`), so a note is never saved without its vector or the other way round.
+
+### 7.4 Database roles (access control in the database)
+
+`db/logic/roles_grants.sql` creates three group roles and one login:
+
+| Database role | Rights |
+|---|---|
+| `herdsense_owner` | All tables, sequences, functions and procedures |
+| `herdsense_vet` | Read, add, change and delete `Health_Records`, `Vaccinations`, `Note_Embeddings`; read `Cattle`, `Breeding_Records`, `Milk_Yield` and the views; `fn_pedigree`, `fn_yield_anomalies`, `fn_vaccinations_due`, `sp_vaccinate_herd`; staff names and roles only (no password hashes) |
+| `herdsense_farmhand` | Read, add and change `Milk_Yield`; read `Cattle` and `v_daily_milk_totals`; staff names and roles only |
+| `herdsense_app` (login) | Only the `Farm_Staff` columns needed to check a password. It is a member of the three roles `WITH INHERIT FALSE, SET TRUE`: it gets none of their rights automatically, but can switch into one |
+
+The web app connects as `herdsense_app`, and each connection pool switches to the signed-in user's role (`-c role=herdsense_vet`, for example). The database therefore refuses anything that role is not granted (SQLSTATE 42501), even if the API check were missing. EXECUTE on the functions and procedures is revoked from PUBLIC so only the granted roles can call them.
+
+### 7.5 Vector database (pgvector)
+
+| Question | Answer |
+|---|---|
+| What is embedded | The `vet_notes` text of each health record (symptoms and observations) |
+| Model | all-MiniLM-L6-v2 (sentence-transformers), run locally in Node.js with `@huggingface/transformers`; no external API or key |
+| Vector | 384 dimensions, mean-pooled and normalised to length 1 |
+| Storage | `Note_Embeddings.embedding vector(384)` in the same PostgreSQL database, with metadata `cattle_id`, `note_date`, `suspected_condition`; one vector per note (UNIQUE FK) |
+| Index | HNSW with `vector_cosine_ops` |
+| Similarity metric | Cosine distance (`<=>`); similarity shown as `1 - distance` |
+| Retrieval | Embed the query text with the same model, `ORDER BY embedding <=> query LIMIT k`, optional metadata filters, join back to `Health_Records` and `Cattle`; the conditions of the top matches are tallied to suggest likely conditions |
+| Fallback | Full-text search on `vet_notes` with the GIN index |
+
+The vector table is created with:
+
+```sql
+CREATE TABLE Note_Embeddings (
+    embedding_id         SERIAL        PRIMARY KEY,
+    health_id            INT           NOT NULL,
+    cattle_id            INT           NOT NULL,     -- metadata
+    note_date            DATE          NOT NULL,     -- metadata
+    suspected_condition  VARCHAR(100),               -- metadata
+    embedding            vector(384)   NOT NULL,     -- all-MiniLM-L6-v2 embedding of vet_notes
+
+    -- One embedding per note; removing the note removes its embedding
+    CONSTRAINT uq_embedding_health UNIQUE (health_id),
+    CONSTRAINT fk_embedding_health FOREIGN KEY (health_id)
+        REFERENCES Health_Records (health_id) ON DELETE CASCADE
+);
+
+-- Approximate nearest-neighbour index for cosine distance (<=>)
+CREATE INDEX idx_note_embeddings_hnsw
+    ON Note_Embeddings USING hnsw (embedding vector_cosine_ops);
+
+-- Metadata filters used alongside similarity search
+CREATE INDEX idx_note_embeddings_condition ON Note_Embeddings (suspected_condition);
+CREATE INDEX idx_note_embeddings_cattle    ON Note_Embeddings (cattle_id);
+```
+
+**Create, read, update and delete on vectors:**
+
+| Operation | In the app | In SQL (`vector_queries.sql`) |
+|---|---|---|
+| Create | Saving an examination embeds its note in the same transaction; "Add to search" re-creates a removed vector; `npm run embed` fills any missing ones | Upsert with `INSERT ... ON CONFLICT (health_id) DO UPDATE` |
+| Read | Similar cases search; "Show vector" displays the dimensions, length and metadata of a note's vector | Nearest neighbours with `<=>`, metadata filter, condition tally, query plan showing the HNSW index |
+| Update | Editing a note re-embeds it in one transaction; changing other fields updates the metadata through the trigger | Update a note and see the trigger sync the metadata |
+| Delete | "Remove from search" deletes one vector and keeps the record; deleting a record deletes its vector (CASCADE) | DELETE a vector; delete a record and see the vector go |
+
+A note is searched by meaning: the query "inflamed udder and lumpy discoloured milk" shares no words with the stored mastitis notes, so full-text search returns nothing, while vector search returns the mastitis cases first and suggests Mastitis as the likely condition.
+
+### 7.6 Data validation and integrity
+
+Input is validated in the database, not only in the interface:
+
+- Keys and constraints refuse duplicates, missing values, impossible values and broken references.
+- Triggers enforce rules that need another table (sex of parents, birth after breeding, milk only for active females, only a Vet examines or vaccinates).
+- Procedures and transactions make multi-step changes all-or-nothing.
+- ON DELETE RESTRICT protects pedigree data; ON DELETE CASCADE removes dependent records and vectors.
+- The API maps database errors to clear messages: 23505 (duplicate) and 23503 (in use or missing) to 409, 23514 / 23502 / 22P02 (invalid value) to 400, 42501 (not allowed) to 403. The interface shows them next to the form.
+
+## 8. Important Queries
+
+The queries are in `db/queries/` and their output is saved in `docs/tests/results_queries_*.txt`.
+
+### DML
+
+`dml_cattle_breeding_milk.sql` and `dml_health_vaccinations.sql` run inside a transaction that is rolled back, so the sample data is kept. They show INSERT (single row with `RETURNING`, several rows at once), UPDATE (simple, with a subquery, and `UPDATE ... FROM` with a join), DELETE (simple and with a subquery) and SELECT.
+
+### Joins, grouping, nested, correlated and recursive queries
+
+| # | Query | Concepts |
+|---|---|---|
+| C-Q1 | Every calving with the names of dam, sire and calf | INNER JOIN, self-joins on Cattle |
+| C-Q2 | Every animal with its recorded parents | LEFT JOIN |
+| C-Q3 | Milk summary per cow over the last 30 days, for cows averaging more than 10 litres a day | GROUP BY, HAVING, aggregates |
+| C-Q4 | Cows whose average daily yield is above the herd average | Nested subquery |
+| C-Q5 | Each cow's last 3 days against her own previous 27 days; drops over 20% flagged | Correlated subquery |
+| C-Q6 | Breeding success rate per sire, for sires used at least twice | Conditional aggregates, GROUP BY, HAVING |
+| C-Q7 | Active bulls that have sired a calf; active cows never bred | Correlated EXISTS / NOT EXISTS |
+| C-Q8 | Pedigree of Tulsi | Recursive CTE (ancestors) |
+| C-Q9 | All descendants of the founder cow Ganga | Recursive CTE (descendants) |
+| C-Q10 | Recurring illness along each maternal bloodline | Recursive CTE, join, GROUP BY, HAVING |
+| C-Q11 | Cows ready to be bred again (60+ days since calving, no pending breeding) | Joins, aggregates, EXISTS |
+| H-Q1 | Examinations in the last 90 days with animal and vet | Three-table JOIN |
+| H-Q2 | Conditions seen more than once, with animals affected and dates | GROUP BY, HAVING, aggregates |
+| H-Q3 | Each vet's workload by severity | Conditional aggregates, LEFT JOIN |
+| H-Q4 | Active animals that have never had the LSD vaccine | Nested subquery with NOT IN |
+| H-Q5 | Most recent examination of each animal | Correlated subquery |
+| H-Q6 | Vaccinations due or overdue | Correlated NOT EXISTS |
+| H-Q7 | The same condition coming back in one animal | GROUP BY two columns, HAVING |
+| H-Q8 | Animals examined in the last 7 days: milk in the 3 days after against the 3 days before | Nested subqueries on the daily milk view |
+| H-Q9 | One timeline of everything recorded for one animal | UNION ALL |
+| H-Q10 | Notes about udder, milk, quarter or clots, ranked | Full-text search (GIN index), `ts_rank` |
+
+**Recursive CTE: pedigree (C-Q8).** The anchor row is the animal; each step joins the previous generation to the breeding record where it was the calf, and returns its dam and sire.
+
+```sql
+WITH RECURSIVE ancestors AS (
+    SELECT c.cattle_id, c.name, 0 AS generation, 'self'::text AS relation, c.name::text AS path
+    FROM Cattle c
+    WHERE c.cattle_id = 17
+    UNION ALL
+    SELECT parent.cattle_id, parent.name, a.generation + 1,
+           CASE WHEN parent.cattle_id = b.dam_id THEN 'dam' ELSE 'sire' END,
+           a.path || ' <- ' || parent.name
+    FROM ancestors a
+    JOIN Breeding_Records b ON b.calf_id = a.cattle_id
+    JOIN Cattle parent      ON parent.cattle_id IN (b.dam_id, b.sire_id)
+)
+SELECT generation, relation, name, path FROM ancestors ORDER BY generation, relation, name;
+```
+
+**Correlated subquery: latest examination of each animal (H-Q5).** The inner query runs for each outer row and finds that animal's latest date.
+
+```sql
+SELECT c.name, h.record_date, h.suspected_condition, h.severity
+FROM Health_Records h
+JOIN Cattle c ON c.cattle_id = h.cattle_id
+WHERE h.record_date = (SELECT max(h2.record_date)
+                         FROM Health_Records h2
+                        WHERE h2.cattle_id = h.cattle_id)
+ORDER BY h.record_date DESC;
+```
+
+**Vector similarity search** (used by the Similar cases page, `src/lib/noteVectors.js`):
+
+```sql
+SELECT ne.health_id, c.tag_number, c.name, ne.note_date, ne.suspected_condition,
+       h.vet_notes, h.treatment,
+       round((1 - (ne.embedding <=> $1::vector))::numeric, 3) AS similarity
+FROM Note_Embeddings ne
+JOIN Health_Records h ON h.health_id = ne.health_id
+JOIN Cattle c         ON c.cattle_id = ne.cattle_id
+WHERE ($2::varchar IS NULL OR ne.suspected_condition = $2)
+ORDER BY ne.embedding <=> $1::vector
+LIMIT $3;
+```
+
+**Yield anomalies** (`fn_yield_anomalies`): daily totals in a CTE, then each cow's recent and baseline averages with `avg(...) FILTER (WHERE ...)`, then a LATERAL join to her latest examination. With the sample data it flags Lakshmi (KA-2003): milk down about 45%, examined for mastitis three days earlier.
+
+## 9. System Architecture
+
+![System architecture](design/architecture.png)
+
+HerdSense has three layers:
+
+1. **Browser.** Next.js pages built with React. They call the API with `fetch` and show the JSON results in forms, tables, charts and the pedigree chart. The menu shows only the pages the user's role can use.
+2. **Next.js server (Route Handlers).** 15 API routes under `/api`. Each route:
+   1. reads the session cookie and checks the user's role (`requireUser` in `src/lib/auth.js`),
+   2. validates the input,
+   3. runs parameterised SQL on the connection pool for that role (`poolFor(role)` in `src/lib/db.js`),
+   4. returns JSON, or a clear error mapped from the database's SQLSTATE.
+
+   The embedding model runs inside this server (`src/lib/embeddings.js`), so vet notes never leave the farm's computer.
+3. **PostgreSQL 17 with pgvector.** The relational tables, the vector table, and the triggers, functions, procedures, views and roles that enforce the rules.
+
+**Sign-in flow.** The login route reads the user's bcrypt hash through the restricted login pool and compares it. It then issues a JWT (HS256, signed with `JWT_SECRET`) in an HttpOnly cookie that lasts 8 hours. Every later request is checked against that cookie.
+
+**Configuration.** Database host, port, name, user and password and the JWT secret come from environment variables in `.env` (template: `.env.example`), which is not committed.
+
+| Layer | Technology |
+|---|---|
+| Interface | Next.js 16 (App Router), React 19 |
+| API | Next.js Route Handlers |
+| Authentication | bcryptjs, jose (JWT), HttpOnly cookie |
+| Database driver | node-postgres (`pg`) |
+| Relational database | PostgreSQL 17 |
+| Vector database | pgvector 0.8.7 |
+| Embeddings | all-MiniLM-L6-v2 via `@huggingface/transformers` |
+| Run environment | Docker (`pgvector/pgvector:pg17-trixie`), Node.js |
+
+## 10. Application Screenshots
+
+### Sign-in
+
+![Sign-in page](screenshots/login.png)
+
+### Today dashboard (Owner)
+
+Milk drops with the latest examination, vaccinations due or overdue, and milk readings not yet recorded today.
+
+![Owner dashboard](screenshots/dashboard_owner.png)
+
+### Cattle list
+
+Search by tag or name and filter by status, sex and breed.
+
+![Cattle list](screenshots/cattle_list.png)
+
+### Animal page: pedigree chart
+
+Tulsi's pedigree from `fn_pedigree`: parents, grandparents and great-grandparents; unknown ancestors shown as "Not recorded".
+
+![Pedigree of Tulsi](screenshots/animal_pedigree_tulsi.png)
+
+### Animal page: milk drop
+
+Lakshmi's last days of milk shown in red (more than 20% below her average), with her mastitis examination.
+
+![Lakshmi's milk drop](screenshots/animal_milk_drop_lakshmi.png)
+
+### Breeding and calving
+
+![Breeding records](screenshots/breeding.png)
+
+### Milk yield: drops flagged by fn_yield_anomalies
+
+![Milk yield drops](screenshots/milk_yield_drops.png)
+
+### Milk entry (Farmhand)
+
+![Milk entry by a farmhand](screenshots/milk_entry_farmhand.png)
+
+### Health records
+
+Examinations with filters; the "In search" column shows whether each note has a vector.
+
+![Health records](screenshots/health_records.png)
+
+### Similar cases: vector search
+
+Symptoms typed in the vet's own words; the closest past cases and the likely conditions.
+
+![Similar cases search](screenshots/similar_cases_semantic.png)
+
+### Similar cases: exact words compared with similar meaning
+
+The same query finds nothing by exact words (full-text search) but finds the mastitis cases by meaning (vector search).
+
+![Keyword and vector search compared](screenshots/similar_cases_compare.png)
+
+### Vaccinations
+
+Doses overdue, due today and upcoming; several animals vaccinated at once with `sp_vaccinate_herd`.
+
+![Vaccinations](screenshots/vaccinations.png)
+
+### Role-based access: a Farmhand opening Health records
+
+![Farmhand refused](screenshots/role_gate_farmhand.png)
+
+### Phone width
+
+<p>
+<img src="screenshots/phone_dashboard_vet.png" alt="Vet dashboard on a phone" width="45%">
+<img src="screenshots/phone_pedigree.png" alt="Pedigree on a phone" width="45%">
+</p>
+
+## 11. Testing Results
+
+HerdSense is tested at three levels: the database, the API over HTTP, and the web interface in a browser. The automated suites run inside a transaction that is rolled back, or remove what they add, so they can be run any number of times. All results below were produced on PostgreSQL 17.12 with pgvector 0.8.7.
+
+| Suite | What it checks | Tests | Result |
+|-------|----------------|------:|--------|
+| Constraints: cattle, breeding, milk | CHECK, UNIQUE, NOT NULL, foreign keys, RESTRICT and CASCADE, daily milk view | 23 | 23 passed |
+| Constraints: staff, health, vaccinations | CHECK, UNIQUE, NOT NULL, foreign keys, cascades, full-text search, views | 19 | 19 passed |
+| Triggers, functions, procedures: cattle, breeding, milk | Breeding and milk triggers, `fn_pedigree`, `fn_yield_anomalies`, `sp_record_calving` and its rollback | 18 | 18 passed |
+| Triggers, functions, procedures: health, vaccinations | Due-date and vet-only triggers, embedding sync trigger, `fn_vaccinations_due`, `sp_vaccinate_herd` and its rollback | 17 | 17 passed |
+| Database roles | What the app login and the Owner, Vet and Farmhand roles may and may not do | 25 | 25 passed |
+| Vector database | pgvector setup, 384-dim normalised vectors, semantic vs keyword search, create, read, update, delete, vector-table constraints | 20 | 20 passed |
+| API: sign-in, health, vectors, vaccinations | Login, JWT cookie, tampered token, role checks, health records, vector routes, vaccinations | 28 | 28 passed |
+| API: cattle, breeding, milk | Cattle CRUD, pedigree, breeding and calving, milk entry, anomalies, role checks | 28 | 28 passed |
+| **Automated total** | | **178** | **178 passed** |
+| Web interface | Every page for every role at laptop and phone width, forms, error messages, vector actions, data shown | 26 cases | 26 passed |
+
+Examples of what the tests prove:
+
+- **Integrity:** a second reading for the same cow, date and session is refused (UNIQUE); deleting a cow that is a parent is refused (RESTRICT); deleting a health record deletes its vector (CASCADE).
+- **Triggers:** a farmhand cannot be recorded as the vet; a calf dated before its breeding is refused; a vaccination's due date is always administered date + interval.
+- **Transactions:** a failing `sp_record_calving` or `sp_vaccinate_herd` saves nothing; an invalid note edit leaves both the note and its vector unchanged.
+- **Roles:** a Vet cannot change milk records and a Farmhand cannot read health records, refused by the database itself (42501), and neither can read password hashes.
+- **Vector search:** reworded mastitis symptoms find no rows by keyword but rank the mastitis notes first by meaning, and Mastitis is suggested as the likely condition.
+
+The test files, their saved results and the web interface test cases are in `docs/tests/`; `docs/tests/README.md` explains how to run them.
+
+## 12. Conclusion
+
+HerdSense brings a dairy farm's cattle, breeding, health, vaccination and milk records into one PostgreSQL database with a Next.js web application, and uses the database to protect and analyse them:
+
+- constraints and triggers refuse impossible data,
+- recursive CTEs trace pedigrees,
+- functions flag milk drops and due vaccinations,
+- procedures and transactions keep multi-step changes all-or-nothing,
+- database roles decide what the Owner, Vet and Farmhand may do.
+
+Free-text vet notes, which relational queries cannot search by meaning, are stored as vectors with pgvector in the same database. A vet can describe symptoms in their own words and see similar past cases and likely conditions, even when no words match.
+
+Each technology was chosen for its type of data: PostgreSQL for structured, related records that must stay consistent, and pgvector for meaning-based search over text. Keeping both in one database let a note and its vector be saved, updated and deleted in the same transaction.
+
+**What we learned:**
+
+- **Rules belong in the database.** Putting rules in the database (constraints, triggers, procedures, GRANTs) rather than only in the application means they hold for every way the data is changed.
+- **Different questions need different paradigms.** Relational queries and vector search answer different kinds of question, and work best together.
+
+**Limitations:**
+
+- The embedding model is general-purpose English, not veterinary-specific.
+- Similar-case results suggest conditions from past cases. They support the vet's judgement but are not a diagnosis.

@@ -1,0 +1,42 @@
+HerdSense database role test results
+Run on 2026-11-16 against the seeded database
+Command: psql -d herdsense -f docs/tests/roles_tests.sql
+
+CREATE TABLE
+CREATE FUNCTION
+psql:docs/tests/roles_tests.sql:92: NOTICE:  1 dose(s) of LSD recorded.
+psql:docs/tests/roles_tests.sql:92: NOTICE:  Calf 48 (Test) recorded for breeding record 16.
+ #  |        role        |                       test                        |    expected    |     actual     | result 
+----+--------------------+---------------------------------------------------+----------------+----------------+--------
+  1 | herdsense_app      | R1 read cattle without choosing a role            | denied (42501) | denied (42501) | PASS
+  2 | herdsense_app      | R2 read usernames and password hashes for sign-in | allowed        | allowed        | PASS
+  3 | herdsense_app      | R3 record milk without choosing a role            | denied (42501) | denied (42501) | PASS
+  4 | herdsense_farmhand | R4 view cattle                                    | allowed        | allowed        | PASS
+  5 | herdsense_farmhand | R5 record milk                                    | allowed        | allowed        | PASS
+  6 | herdsense_farmhand | R6 delete milk records                            | denied (42501) | denied (42501) | PASS
+  7 | herdsense_farmhand | R7 read health records                            | denied (42501) | denied (42501) | PASS
+  8 | herdsense_farmhand | R8 read password hashes                           | denied (42501) | denied (42501) | PASS
+  9 | herdsense_farmhand | R9 read staff names                               | allowed        | allowed        | PASS
+ 10 | herdsense_farmhand | R10 read health data through a view               | denied (42501) | denied (42501) | PASS
+ 11 | herdsense_farmhand | R11 run the pedigree function                     | denied (42501) | denied (42501) | PASS
+ 12 | herdsense_farmhand | R12 change an animal                              | denied (42501) | denied (42501) | PASS
+ 13 | herdsense_vet      | R13 add a health record                           | allowed        | allowed        | PASS
+ 14 | herdsense_vet      | R14 read the health summary view                  | allowed        | allowed        | PASS
+ 15 | herdsense_vet      | R15 add an animal                                 | denied (42501) | denied (42501) | PASS
+ 16 | herdsense_vet      | R16 record milk                                   | denied (42501) | denied (42501) | PASS
+ 17 | herdsense_vet      | R17 vaccinate animals (procedure)                 | allowed        | allowed        | PASS
+ 18 | herdsense_vet      | R18 record a calving (owner-only procedure)       | denied (42501) | denied (42501) | PASS
+ 19 | herdsense_vet      | R19 run yield-anomaly detection                   | allowed        | allowed        | PASS
+ 20 | herdsense_vet      | R20 update vet-note embedding metadata            | allowed        | allowed        | PASS
+ 21 | herdsense_vet      | R21 read password hashes                          | denied (42501) | denied (42501) | PASS
+ 22 | herdsense_owner    | R22 add an animal                                 | allowed        | allowed        | PASS
+ 23 | herdsense_owner    | R23 record a calving (procedure)                  | allowed        | allowed        | PASS
+ 24 | herdsense_owner    | R24 manage staff accounts                         | allowed        | allowed        | PASS
+ 25 | herdsense_owner    | R25 delete milk records                           | allowed        | allowed        | PASS
+(25 rows)
+
+ passed | total 
+--------+-------
+     25 |    25
+(1 row)
+

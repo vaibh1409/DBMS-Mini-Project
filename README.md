@@ -81,6 +81,21 @@ Next time: open Docker Desktop, run `docker start herdsense-db`, then `npm run d
 
 Without Docker, run the same SQL files in the same order with `psql -U <admin_user> -d herdsense -f <file>` against a PostgreSQL that has pgvector installed, and set `DB_PORT` in `.env` to that server's port.
 
+## Using the App
+
+Open http://localhost:3000 and sign in with one of the demo accounts below. The menu shows only the pages your role can use.
+
+| Page | Roles | What it does |
+|------|-------|--------------|
+| Today | all | What needs attention: milk drops, vaccinations due, milk readings not yet recorded |
+| Cattle | all | Herd list with search and filters; the Owner adds animals |
+| Animal page | all | Details and 14-day milk chart; Owner and Vet also see parents, calves, the pedigree chart and health history; the Owner edits or deletes |
+| Milk yield | all | Record a reading (Owner, Farmhand); daily totals or each session; yield drops (Owner, Vet) |
+| Breeding | Owner, Vet | Breeding records; the Owner records breedings and calvings |
+| Health records | Owner, Vet | Examinations with filters; Vets add them; edit or delete (the note's vector follows) |
+| Similar cases | Owner, Vet | Vector search over vet notes, compared with keyword search; show, remove and re-add a note's vector, edit a note and re-embed it |
+| Vaccinations | Owner, Vet | Doses due or overdue; Vets vaccinate several animals at once; dose history |
+
 ## Demo Accounts
 
 > For demonstration only. Passwords are stored as bcrypt hashes in the database.
@@ -104,8 +119,9 @@ db/
   vector/     pgvector setup, vector table, vector queries
 scripts/      Embedding generation and vector demo scripts
 src/
-  app/        Next.js pages and API route handlers (app/api/...)
-  lib/        Database pools per role, sign-in, error handling, embeddings, vector operations
+  app/        Next.js pages: login, (app)/ signed-in pages, api/ route handlers
+  components/ Navigation shell and shared interface parts
+  lib/        Database pools per role, sign-in, error handling, embeddings, vector operations, browser API helper
 docs/
   design/     ER diagram, relational schema, data dictionary, vector design, database choice
   screenshots/

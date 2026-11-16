@@ -70,7 +70,7 @@ Cosine distance (pgvector operator `<=>`). Similarity is reported as `1 - cosine
 
 ### Full-text search fallback
 
-If the embedding step is unavailable, notes are searched with PostgreSQL full-text search on `Health_Records.vet_notes` (a `tsvector` GIN index, created in Phase 2).
+If the embedding step is unavailable, notes are searched with PostgreSQL full-text search on `Health_Records.vet_notes` (a `tsvector` GIN index, `idx_health_notes_fts` in `db/schema/04_indexes.sql`).
 
 ## Read, update and delete operations
 

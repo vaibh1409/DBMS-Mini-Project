@@ -133,6 +133,8 @@ docs/
 ## Documentation
 
 - [Project report](docs/HerdSense_Report.md): objectives, requirements, design, implementation, queries, architecture, screenshots, testing and conclusion
+- [Project report (PDF)](docs/HerdSense_Report.pdf)
+- [System architecture](docs/design/architecture.png)
 - [ER diagram](docs/design/er_diagram.png)
 - [Relational schema](docs/design/relational_schema.md)
 - [Data dictionary](docs/design/data_dictionary.md)

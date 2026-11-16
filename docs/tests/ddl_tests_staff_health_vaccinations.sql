@@ -119,7 +119,7 @@ BEGIN
         $q$INSERT INTO Vaccinations (cattle_id, vaccine_name, administered_date, interval_days, administered_by)
            VALUES (12345, 'FMD', '2024-01-01', 180, 9101)$q$);
 
-    -- next_due_date is set explicitly here; from Phase 5 a trigger sets it.
+    -- next_due_date is set explicitly here; the trigger trg_vaccination_due_date also sets it.
     -- Animal 9101: older FMD dose overdue, newer FMD dose not yet due -> not listed.
     -- Animal 9102: only FMD dose is overdue -> listed.
     INSERT INTO Vaccinations (cattle_id, vaccine_name, administered_date, interval_days, next_due_date, administered_by) VALUES

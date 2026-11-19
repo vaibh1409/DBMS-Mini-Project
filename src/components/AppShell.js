@@ -19,6 +19,7 @@ const NAV = [
   { href: '/breeding', label: 'Breeding', roles: ['Owner', 'Vet'] },
   { href: '/health', label: 'Health records', roles: ['Owner', 'Vet'] },
   { href: '/search', label: 'Similar cases', roles: ['Owner', 'Vet'] },
+  { href: '/predictions', label: 'Predicted conditions', roles: ['Owner', 'Vet'] },
   { href: '/vaccinations', label: 'Vaccinations', roles: ['Owner', 'Vet'] },
 ];
 
